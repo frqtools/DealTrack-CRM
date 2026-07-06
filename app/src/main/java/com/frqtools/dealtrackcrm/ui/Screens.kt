@@ -1,4 +1,4 @@
-package com.example.ui
+package com.frqtools.dealtrackcrm.ui
 
 import android.Manifest
 import android.app.DatePickerDialog
@@ -44,8 +44,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.example.data.*
-import com.example.ui.theme.*
+import com.frqtools.dealtrackcrm.data.*
+import com.frqtools.dealtrackcrm.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -168,7 +168,7 @@ fun HomeScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceBg)
             )
         },
         floatingActionButton = {
@@ -262,7 +262,7 @@ fun HomeScreen(
 
             // Big Search Bar Quick Link
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBg),
                 border = BorderStroke(1.dp, OutlineColor),
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
@@ -449,7 +449,7 @@ fun HomeScreen(
                 )
             } else {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceBg),
                     border = BorderStroke(1.dp, ScreenBg),
                     elevation = CardDefaults.cardElevation(1.dp),
                     shape = RoundedCornerShape(24.dp),
@@ -491,7 +491,7 @@ fun StatCard(
     onClick: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         border = BorderStroke(1.dp, ScreenBg),
         elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(24.dp),
@@ -543,7 +543,7 @@ fun ActionCard(
     onClick: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         border = BorderStroke(1.dp, OutlineColor),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
@@ -680,7 +680,7 @@ fun ClientListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Clients", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         },
         floatingActionButton = {
@@ -741,7 +741,7 @@ fun ClientListScreen(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = PrimaryBlue,
                             selectedLabelColor = Color.White,
-                            containerColor = Color.White,
+                            containerColor = SurfaceBg,
                             labelColor = OnSurfaceVariantText
                         )
                     )
@@ -796,7 +796,7 @@ fun ClientCard(
     onClick: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
@@ -943,17 +943,6 @@ fun AddEditClientScreen(
         }
     }
 
-    // Permission launcher for contacts
-    val contactPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            contactPickerLauncher.launch(null)
-        } else {
-            Toast.makeText(context, "Contacts permission is required to import.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -999,7 +988,7 @@ fun AddEditClientScreen(
                         Text("Save", fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -1014,12 +1003,7 @@ fun AddEditClientScreen(
             if (!isEdit) {
                 Button(
                     onClick = {
-                        val check = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS)
-                        if (check == PackageManager.PERMISSION_GRANTED) {
-                            contactPickerLauncher.launch(null)
-                        } else {
-                            contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-                        }
+                        contactPickerLauncher.launch(null)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue.copy(alpha = 0.1f)),
                     shape = RoundedCornerShape(24.dp),
@@ -1096,7 +1080,7 @@ fun AddEditClientScreen(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = PrimaryBlue,
                             selectedLabelColor = Color.White,
-                            containerColor = Color.White,
+                            containerColor = SurfaceBg,
                             labelColor = OnSurfaceVariantText
                         )
                     )

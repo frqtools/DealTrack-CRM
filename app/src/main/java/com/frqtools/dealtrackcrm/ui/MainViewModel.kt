@@ -1,12 +1,12 @@
-package com.example.ui
+package com.frqtools.dealtrackcrm.ui
 
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.*
-import com.example.reminder.ReminderScheduler
+import com.frqtools.dealtrackcrm.data.*
+import com.frqtools.dealtrackcrm.reminder.ReminderScheduler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -55,9 +55,13 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         }
     }
 
-    fun deleteClient(client: Client, onComplete: () -> Unit = {}) {
+    fun deleteClient(context: Context, client: Client, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            repository.deleteClient(client)
+            val followUps = repository.getFollowUpsForClientDirect(client.id)
+            followUps.forEach { followUp ->
+                ReminderScheduler.cancel(context, followUp.id)
+            }
+            repository.deleteClientCascade(client)
             onComplete()
         }
     }

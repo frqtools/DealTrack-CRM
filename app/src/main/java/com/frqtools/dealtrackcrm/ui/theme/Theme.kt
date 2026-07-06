@@ -1,4 +1,4 @@
-package com.example.ui.theme
+package com.frqtools.dealtrackcrm.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -18,12 +18,12 @@ private val LightColorScheme = lightColorScheme(
     onPrimaryContainer = PrimaryBlue,
     secondary = PrimaryLight,
     onSecondary = Color.White,
-    background = ScreenBg,
-    onBackground = OnSurfaceText,
-    surface = SurfaceBg,
-    onSurface = OnSurfaceText,
-    surfaceVariant = ScreenBg,
-    onSurfaceVariant = OnSurfaceVariantText,
+    background = LightScreenBg,
+    onBackground = LightOnSurfaceText,
+    surface = LightSurfaceBg,
+    onSurface = LightOnSurfaceText,
+    surfaceVariant = LightScreenBg,
+    onSurfaceVariant = LightOnSurfaceVariantText,
     outline = OutlineColor
 )
 

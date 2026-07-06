@@ -1,4 +1,4 @@
-package com.example
+package com.frqtools.dealtrackcrm
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -32,10 +32,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.data.AppDatabase
-import com.example.data.AppRepository
-import com.example.ui.*
-import com.example.ui.theme.*
+import com.frqtools.dealtrackcrm.data.AppDatabase
+import com.frqtools.dealtrackcrm.data.AppRepository
+import com.frqtools.dealtrackcrm.ui.*
+import com.frqtools.dealtrackcrm.ui.theme.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (isBottomBarVisible) {
                             NavigationBar(
-                                containerColor = Color.White,
+                                containerColor = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 3.dp
                             ) {
                                 NavigationBarItem(

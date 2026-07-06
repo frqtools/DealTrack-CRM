@@ -1,8 +1,9 @@
-package com.example.data
+package com.frqtools.dealtrackcrm.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
+import androidx.room.withTransaction
 
 class AppRepository(private val db: AppDatabase) {
     private val clientDao = db.clientDao()
@@ -18,6 +19,17 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun insertClient(client: Client): Long = clientDao.insertClient(client)
     suspend fun updateClient(client: Client) = clientDao.updateClient(client)
     suspend fun deleteClient(client: Client) = clientDao.deleteClient(client)
+
+    suspend fun getFollowUpsForClientDirect(clientId: Int): List<FollowUp> = followUpDao.getFollowUpsForClientDirect(clientId)
+
+    suspend fun deleteClientCascade(client: Client) {
+        db.withTransaction {
+            dealDao.deleteDealsByClientId(client.id)
+            interactionDao.deleteInteractionsByClientId(client.id)
+            followUpDao.deleteFollowUpsByClientId(client.id)
+            clientDao.deleteClient(client)
+        }
+    }
 
     // --- Deals ---
     val allDeals: Flow<List<Deal>> = dealDao.getAllDeals()

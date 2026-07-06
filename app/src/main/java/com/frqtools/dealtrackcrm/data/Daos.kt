@@ -1,4 +1,4 @@
-package com.example.data
+package com.frqtools.dealtrackcrm.data
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +46,9 @@ interface DealDao {
 
     @Delete
     suspend fun deleteDeal(deal: Deal)
+
+    @Query("DELETE FROM deals WHERE clientId = :clientId")
+    suspend fun deleteDealsByClientId(clientId: Int)
 }
 
 @Dao
@@ -67,6 +70,9 @@ interface InteractionDao {
 
     @Delete
     suspend fun deleteInteraction(interaction: Interaction)
+
+    @Query("DELETE FROM interactions WHERE clientId = :clientId")
+    suspend fun deleteInteractionsByClientId(clientId: Int)
 }
 
 @Dao
@@ -91,6 +97,12 @@ interface FollowUpDao {
 
     @Delete
     suspend fun deleteFollowUp(followUp: FollowUp)
+
+    @Query("DELETE FROM follow_ups WHERE clientId = :clientId")
+    suspend fun deleteFollowUpsByClientId(clientId: Int)
+
+    @Query("SELECT * FROM follow_ups WHERE clientId = :clientId")
+    suspend fun getFollowUpsForClientDirect(clientId: Int): List<FollowUp>
 }
 
 @Dao

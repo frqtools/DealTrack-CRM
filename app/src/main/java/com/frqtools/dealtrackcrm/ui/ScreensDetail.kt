@@ -1,4 +1,4 @@
-package com.example.ui
+package com.frqtools.dealtrackcrm.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
@@ -43,8 +43,8 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import com.example.data.*
-import com.example.ui.theme.*
+import com.frqtools.dealtrackcrm.data.*
+import com.frqtools.dealtrackcrm.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -92,7 +92,7 @@ fun ClientProfileScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteClient(client) {
+                        viewModel.deleteClient(context, client) {
                             Toast.makeText(context, "Client deleted", Toast.LENGTH_SHORT).show()
                             navController.navigateUp()
                         }
@@ -123,7 +123,7 @@ fun ClientProfileScreen(
                         Icon(Icons.Default.Delete, contentDescription = "Delete Client", tint = LostRed)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -134,7 +134,7 @@ fun ClientProfileScreen(
         ) {
             // Profile Header
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBg),
                 shape = RoundedCornerShape(0.dp),
                 elevation = CardDefaults.cardElevation(1.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -184,7 +184,7 @@ fun ClientProfileScreen(
             // Tabs
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color.White,
+                containerColor = SurfaceBg,
                 contentColor = PrimaryBlue,
                 edgePadding = 0.dp
             ) {
@@ -270,7 +270,7 @@ fun InfoTabContent(client: Client) {
 @Composable
 fun InfoRowCard(label: String, value: String, icon: ImageVector) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
@@ -411,7 +411,7 @@ fun DealListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Deals Tracker", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         },
         floatingActionButton = {
@@ -433,7 +433,7 @@ fun DealListScreen(
             // Filter Tabs
             TabRow(
                 selectedTabIndex = selectedStatusTab,
-                containerColor = Color.White,
+                containerColor = SurfaceBg,
                 contentColor = PrimaryBlue
             ) {
                 tabs.forEachIndexed { index, title ->
@@ -511,7 +511,7 @@ fun DealCardRow(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
@@ -749,6 +749,37 @@ fun AddEditDealScreen(
                     }
                 },
                 actions = {
+                    if (isEdit) {
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Deal", tint = LostRed)
+                        }
+                        if (showDeleteConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteConfirm = false },
+                                title = { Text("Delete Deal?") },
+                                text = { Text("Are you sure you want to permanently delete this deal?") },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            val dl = deals.find { it.id == dealId }
+                                            if (dl != null) {
+                                                viewModel.deleteDeal(dl) {
+                                                    Toast.makeText(context, "Deal deleted", Toast.LENGTH_SHORT).show()
+                                                    navController.navigateUp()
+                                                }
+                                            }
+                                            showDeleteConfirm = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = LostRed)
+                                    ) { Text("Delete", color = Color.White) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                    }
                     TextButton(onClick = {
                         val clientSelected = clients.find { it.id == selectedClientId }
                         if (clientSelected == null) {
@@ -783,7 +814,7 @@ fun AddEditDealScreen(
                         Text("Save", fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -1118,6 +1149,37 @@ fun AddEditInteractionScreen(
                     }
                 },
                 actions = {
+                    if (isEdit) {
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Interaction", tint = LostRed)
+                        }
+                        if (showDeleteConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteConfirm = false },
+                                title = { Text("Delete Interaction?") },
+                                text = { Text("Are you sure you want to permanently delete this interaction log?") },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            val intr = interactions.find { it.id == interactionId }
+                                            if (intr != null) {
+                                                viewModel.deleteInteraction(intr) {
+                                                    Toast.makeText(context, "Interaction deleted", Toast.LENGTH_SHORT).show()
+                                                    navController.navigateUp()
+                                                }
+                                            }
+                                            showDeleteConfirm = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = LostRed)
+                                    ) { Text("Delete", color = Color.White) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                    }
                     TextButton(onClick = {
                         val clientSelected = clients.find { it.id == selectedClientId }
                         if (clientSelected == null) {
@@ -1149,7 +1211,7 @@ fun AddEditInteractionScreen(
                         Text("Save", fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -1437,7 +1499,7 @@ fun InteractionCardRow(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
@@ -1552,7 +1614,7 @@ fun FollowUpListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Follow-Ups Schedule", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         },
         floatingActionButton = {
@@ -1573,7 +1635,7 @@ fun FollowUpListScreen(
         ) {
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color.White,
+                containerColor = SurfaceBg,
                 contentColor = PrimaryBlue
             ) {
                 tabs.forEachIndexed { index, title ->
@@ -1716,7 +1778,7 @@ fun FollowUpCardRow(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBg),
         elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
@@ -1883,6 +1945,37 @@ fun AddEditFollowUpScreen(
                     }
                 },
                 actions = {
+                    if (isEdit) {
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete FollowUp", tint = LostRed)
+                        }
+                        if (showDeleteConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteConfirm = false },
+                                title = { Text("Delete Reminder?") },
+                                text = { Text("Are you sure you want to permanently delete this reminder?") },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            val f = followUps.find { it.id == followUpId }
+                                            if (f != null) {
+                                                viewModel.deleteFollowUp(context, f) {
+                                                    Toast.makeText(context, "Reminder deleted", Toast.LENGTH_SHORT).show()
+                                                    navController.navigateUp()
+                                                }
+                                            }
+                                            showDeleteConfirm = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = LostRed)
+                                    ) { Text("Delete", color = Color.White) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                    }
                     TextButton(onClick = {
                         val clientSelected = clients.find { it.id == selectedClientId }
                         if (clientSelected == null) {
@@ -1915,7 +2008,7 @@ fun AddEditFollowUpScreen(
                         Text("Save", fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -2253,7 +2346,7 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings & Profile", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -2268,7 +2361,7 @@ fun SettingsScreen(
             // Business Profile Header Card
             Text("Business Profile", style = AppTypography.titleMedium, fontWeight = FontWeight.Bold)
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBg),
                 elevation = CardDefaults.cardElevation(1.dp),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -2348,7 +2441,7 @@ fun SettingsScreen(
             // CRM Field Customization Card
             Text("CRM Field Customization", style = AppTypography.titleMedium, fontWeight = FontWeight.Bold)
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBg),
                 elevation = CardDefaults.cardElevation(1.dp),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -2432,7 +2525,7 @@ fun SettingsScreen(
             // Customization Options
             Text("Data Management", style = AppTypography.titleMedium, fontWeight = FontWeight.Bold)
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBg),
                 elevation = CardDefaults.cardElevation(1.dp),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -2597,7 +2690,7 @@ fun SearchScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }
     ) { innerPadding ->
@@ -2832,23 +2925,71 @@ fun backupDatabase(context: Context, outputStream: java.io.OutputStream): Boolea
     }
 }
 
+fun isValidSqliteFile(file: File): Boolean {
+    if (!file.exists() || file.length() < 16) return false
+    val header = ByteArray(16)
+    try {
+        file.inputStream().use { input ->
+            val read = input.read(header)
+            if (read < 16) return false
+        }
+    } catch (e: Exception) {
+        return false
+    }
+    val expected = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
+    return header.contentEquals(expected)
+}
+
 fun restoreDatabase(context: Context, inputStream: java.io.InputStream): Boolean {
+    val tempFile = File(context.cacheDir, "temp_restore.db")
     return try {
-        val db = AppDatabase.getDatabase(context)
-        db.close()
-        val dbFile = context.getDatabasePath("track_deals_database")
-        val walFile = File(dbFile.path + "-wal")
-        val shmFile = File(dbFile.path + "-shm")
-        if (walFile.exists()) walFile.delete()
-        if (shmFile.exists()) shmFile.delete()
-        dbFile.outputStream().use { output ->
+        // 1. Copy input stream to temp file
+        tempFile.outputStream().use { output ->
             inputStream.use { input ->
                 input.copyTo(output)
             }
         }
+
+        // 2. Validate temp file is a valid SQLite DB
+        if (!isValidSqliteFile(tempFile)) {
+            tempFile.delete()
+            return false
+        }
+
+        // 3. Backup the current live database files
+        val dbFile = context.getDatabasePath("track_deals_database")
+        if (dbFile.exists()) {
+            val backupFile = File(dbFile.path + ".bak")
+            dbFile.inputStream().use { input ->
+                backupFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+
+        // 4. Close database connection and reset the instance
+        AppDatabase.closeAndResetInstance()
+
+        // 5. Delete live database and support files
+        val walFile = File(dbFile.path + "-wal")
+        val shmFile = File(dbFile.path + "-shm")
+        if (walFile.exists()) walFile.delete()
+        if (shmFile.exists()) shmFile.delete()
+        if (dbFile.exists()) dbFile.delete()
+
+        // 6. Copy temp file to live database path
+        tempFile.inputStream().use { input ->
+            dbFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        // 7. Cleanup temp file
+        tempFile.delete()
         true
     } catch (e: Exception) {
         e.printStackTrace()
+        if (tempFile.exists()) tempFile.delete()
         false
     }
 }

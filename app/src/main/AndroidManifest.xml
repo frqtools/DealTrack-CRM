@@ -31,13 +31,13 @@
         </activity>
 
         <receiver
-            android:name="com.example.reminder.ReminderReceiver"
+            android:name="com.frqtools.dealtrackcrm.reminder.ReminderReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="com.example.reminder.ACTION_TRIGGER" />
-                <action android:name="com.example.reminder.ACTION_DONE" />
-                <action android:name="com.example.reminder.ACTION_SNOOZE" />
+                <action android:name="com.frqtools.dealtrackcrm.reminder.ACTION_TRIGGER" />
+                <action android:name="com.frqtools.dealtrackcrm.reminder.ACTION_DONE" />
+                <action android:name="com.frqtools.dealtrackcrm.reminder.ACTION_SNOOZE" />
             </intent-filter>
         </receiver>
     </application>

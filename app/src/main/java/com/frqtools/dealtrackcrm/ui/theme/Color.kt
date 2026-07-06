@@ -1,17 +1,36 @@
-package com.example.ui.theme
+package com.frqtools.dealtrackcrm.ui.theme
 
 import androidx.compose.ui.graphics.Color
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 
 val PrimaryBlue = Color(0xFF1565C0)
 val PrimaryLight = Color(0xFF1E88E5)
 val PrimaryContainer = Color(0xFFDBEAFE)
 
-val SurfaceBg = Color(0xFFFFFFFF)
-val ScreenBg = Color(0xFFF1F5F9) // Light blue-gray background
+val LightSurfaceBg = Color(0xFFFFFFFF)
+val LightScreenBg = Color(0xFFF1F5F9) // Light blue-gray background
 
-val OnSurfaceText = Color(0xFF1A1A2E)
-val OnSurfaceVariantText = Color(0xFF64748B)
+val LightOnSurfaceText = Color(0xFF1A1A2E)
+val LightOnSurfaceVariantText = Color(0xFF64748B)
 val OutlineColor = Color(0xFFCBD5E1)
+
+val SurfaceBg: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.surface
+
+val ScreenBg: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.background
+
+val OnSurfaceText: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.onSurface
+
+val OnSurfaceVariantText: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.onSurfaceVariant
 
 // Deal status and priority colors
 val WonGreen = Color(0xFF16A34A)

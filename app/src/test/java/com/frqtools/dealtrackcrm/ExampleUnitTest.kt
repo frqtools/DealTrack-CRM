@@ -1,4 +1,4 @@
-package com.example
+package com.frqtools.dealtrackcrm
 
 import org.junit.Assert.*
 import org.junit.Test

@@ -1,4 +1,4 @@
-package com.example.reminder
+package com.frqtools.dealtrackcrm.reminder
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,11 +9,11 @@ import android.content.Intent
 import android.os.Build
 import android.net.Uri
 import androidx.core.app.NotificationCompat
-import com.example.MainActivity
-import com.example.data.AppDatabase
-import com.example.data.AppRepository
-import com.example.data.FollowUp
-import com.example.data.Interaction
+import com.frqtools.dealtrackcrm.MainActivity
+import com.frqtools.dealtrackcrm.data.AppDatabase
+import com.frqtools.dealtrackcrm.data.AppRepository
+import com.frqtools.dealtrackcrm.data.FollowUp
+import com.frqtools.dealtrackcrm.data.Interaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -21,9 +21,9 @@ import kotlinx.coroutines.launch
 
 class ReminderReceiver : BroadcastReceiver() {
     companion object {
-        const val ACTION_TRIGGER = "com.example.reminder.ACTION_TRIGGER"
-        const val ACTION_DONE = "com.example.reminder.ACTION_DONE"
-        const val ACTION_SNOOZE = "com.example.reminder.ACTION_SNOOZE"
+        const val ACTION_TRIGGER = "com.frqtools.dealtrackcrm.reminder.ACTION_TRIGGER"
+        const val ACTION_DONE = "com.frqtools.dealtrackcrm.reminder.ACTION_DONE"
+        const val ACTION_SNOOZE = "com.frqtools.dealtrackcrm.reminder.ACTION_SNOOZE"
         const val CHANNEL_ID = "followup_reminders"
     }
 
