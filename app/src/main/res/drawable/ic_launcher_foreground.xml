@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center of the canvas is 54, 54. Safe area is 66x66 (from 21 to 87 on both axes) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,48h10v28H28z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,36h10v40H42z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,52h10v24H56z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,40h10v36H70z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,78h60v3H24z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,38l16,-12 14,11 18,-15 2,2 -20,17 -14,-11 -14,10z" />
+</vector>
