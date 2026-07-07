@@ -39,6 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -221,7 +224,7 @@ fun HomeScreen(
                     )
                     DropdownMenuItem(
                         text = { Text("Add Deal", fontWeight = FontWeight.Bold) },
-                        leadingIcon = { Icon(Icons.Default.AddCard, null, tint = Color(0xFF6A1B9A)) },
+                        leadingIcon = { Icon(Icons.Default.AddCard, null, tint = ProposalPurple) },
                         onClick = {
                             showQuickMenu = false
                             navController.navigate("add_edit_deal")
@@ -393,8 +396,8 @@ fun HomeScreen(
                 ActionCard(
                     label = "Client",
                     icon = Icons.Default.PersonAdd,
-                    iconBgColor = Color(0xFFDBEAFE),
-                    iconTextColor = Color(0xFF1565C0),
+                    iconBgColor = PrimaryContainer,
+                    iconTextColor = PrimaryBlue,
                     modifier = Modifier.weight(1f)
                 ) {
                     navController.navigate("add_edit_client")
@@ -402,8 +405,8 @@ fun HomeScreen(
                 ActionCard(
                     label = "Log",
                     icon = Icons.AutoMirrored.Filled.Chat,
-                    iconBgColor = Color(0xFFF3E8FF),
-                    iconTextColor = Color(0xFF6A1B9A),
+                    iconBgColor = ProposalPurpleContainer,
+                    iconTextColor = ProposalPurple,
                     modifier = Modifier.weight(1f)
                 ) {
                     navController.navigate("add_edit_interaction")
@@ -411,8 +414,8 @@ fun HomeScreen(
                 ActionCard(
                     label = "Follow",
                     icon = Icons.Default.Alarm,
-                    iconBgColor = Color(0xFFFEF3C7),
-                    iconTextColor = Color(0xFFD97706),
+                    iconBgColor = WarningContainer,
+                    iconTextColor = WarningAmber,
                     modifier = Modifier.weight(1f)
                 ) {
                     navController.navigate("add_edit_follow_up")
@@ -420,8 +423,8 @@ fun HomeScreen(
                 ActionCard(
                     label = "Deal",
                     icon = Icons.Default.AddCard,
-                    iconBgColor = Color(0xFFDCFCE7),
-                    iconTextColor = Color(0xFF16A34A),
+                    iconBgColor = WonGreenContainer,
+                    iconTextColor = WonGreen,
                     modifier = Modifier.weight(1f)
                 ) {
                     navController.navigate("add_edit_deal")
@@ -657,7 +660,7 @@ fun ClientListScreen(
     val deals by viewModel.deals.collectAsStateWithLifecycle()
     val followUps by viewModel.followUps.collectAsStateWithLifecycle()
 
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var selectedType by remember { mutableStateOf("All") }
 
     // Unique custom tags + default ones
@@ -665,12 +668,12 @@ fun ClientListScreen(
         listOf("All") + clients.map { it.clientType }.distinct().filter { it.isNotEmpty() }
     }
 
-    val filteredClients = remember(clients, searchQuery, selectedType) {
+    val filteredClients = remember(clients, searchQuery.text, selectedType) {
         clients.filter {
-            val matchesSearch = it.name.contains(searchQuery, ignoreCase = true) ||
-                    it.phone.contains(searchQuery, ignoreCase = true) ||
-                    it.companyName.contains(searchQuery, ignoreCase = true) ||
-                    it.city.contains(searchQuery, ignoreCase = true)
+            val matchesSearch = it.name.contains(searchQuery.text, ignoreCase = true) ||
+                    it.phone.contains(searchQuery.text, ignoreCase = true) ||
+                    it.companyName.contains(searchQuery.text, ignoreCase = true) ||
+                    it.city.contains(searchQuery.text, ignoreCase = true)
             val matchesType = selectedType == "All" || it.clientType == selectedType
             matchesSearch && matchesType
         }
@@ -701,14 +704,15 @@ fun ClientListScreen(
                 .padding(innerPadding)
         ) {
             // Search Bar
+            var isSearchFocused by remember { mutableStateOf(false) }
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search by name, phone, or company...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = OnSurfaceVariantText) },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
+                    if (searchQuery.text.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = TextFieldValue("") }) {
                             Icon(Icons.Default.Close, contentDescription = "Clear", tint = OnSurfaceVariantText)
                         }
                     }
@@ -722,6 +726,14 @@ fun ClientListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused && !isSearchFocused) {
+                            searchQuery = searchQuery.copy(
+                                selection = TextRange(0, searchQuery.text.length)
+                            )
+                        }
+                        isSearchFocused = focusState.isFocused
+                    }
             )
 
             // Horizontal Filter Chips
@@ -754,8 +766,8 @@ fun ClientListScreen(
                 EmptyStateView(
                     icon = Icons.Outlined.People,
                     title = "No clients found",
-                    description = if (searchQuery.isNotEmpty()) "Try adjusting your search keywords." else "Start adding clients manually or import from phone contacts.",
-                    buttonText = if (searchQuery.isNotEmpty()) null else "Add Client",
+                    description = if (searchQuery.text.isNotEmpty()) "Try adjusting your search keywords." else "Start adding clients manually or import from phone contacts.",
+                    buttonText = if (searchQuery.text.isNotEmpty()) null else "Add Client",
                     onButtonClick = { navController.navigate("add_edit_client") }
                 )
             } else {
@@ -921,17 +933,20 @@ fun AddEditClientScreen(
                     val hasPhone = cursor.getString(hasPhoneIndex)
 
                     if (hasPhone == "1") {
+                        val contactDataUri = Uri.withAppendedPath(uri, ContactsContract.Contacts.Data.CONTENT_DIRECTORY)
                         val phonesCursor = contentResolver.query(
-                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            contactDataUri,
                             null,
-                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + contactId,
-                            null,
+                            ContactsContract.Data.MIMETYPE + " = ?",
+                            arrayOf(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE),
                             null
                         )
                         if (phonesCursor != null && phonesCursor.moveToFirst()) {
                             val numberIndex = phonesCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                            val phoneNumber = phonesCursor.getString(numberIndex)
-                            phone = phoneNumber
+                            if (numberIndex != -1) {
+                                val phoneNumber = phonesCursor.getString(numberIndex)
+                                phone = phoneNumber
+                            }
                             phonesCursor.close()
                         }
                     }

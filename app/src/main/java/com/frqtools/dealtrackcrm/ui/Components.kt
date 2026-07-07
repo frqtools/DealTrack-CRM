@@ -83,7 +83,7 @@ fun StatusChip(status: String) {
         "lost" -> Pair(LostRed, LostRedContainer)
         "open" -> Pair(PrimaryBlue, PrimaryContainer)
         "in progress" -> Pair(WarningAmber, WarningContainer)
-        "proposal sent" -> Pair(Color(0xFF6A1B9A), Color(0xFFF3E8FF))
+        "proposal sent" -> Pair(ProposalPurple, ProposalPurpleContainer)
         "on hold" -> Pair(OnHoldGray, OnHoldContainer)
         else -> Pair(PrimaryBlue, PrimaryContainer)
     }

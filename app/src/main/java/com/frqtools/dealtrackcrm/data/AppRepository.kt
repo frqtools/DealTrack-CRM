@@ -18,7 +18,9 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun getClientByIdDirect(id: Int): Client? = clientDao.getClientByIdDirect(id)
     suspend fun insertClient(client: Client): Long = clientDao.insertClient(client)
     suspend fun updateClient(client: Client) = clientDao.updateClient(client)
-    suspend fun deleteClient(client: Client) = clientDao.deleteClient(client)
+    suspend fun deleteClient(client: Client) {
+        deleteClientCascade(client)
+    }
 
     suspend fun getFollowUpsForClientDirect(clientId: Int): List<FollowUp> = followUpDao.getFollowUpsForClientDirect(clientId)
 
@@ -88,7 +90,10 @@ class AppRepository(private val db: AppDatabase) {
 
     // --- General Reset ---
     suspend fun clearAllData(keepDemoSeeding: Boolean = false) {
-        db.clearAllTables()
+        clientDao.deleteAllClients()
+        dealDao.deleteAllDeals()
+        interactionDao.deleteAllInteractions()
+        followUpDao.deleteAllFollowUps()
         // Re-insert default settings with hasSeeded set based on user's choice.
         // If keepDemoSeeding is false, we mark hasSeeded = true to prevent re-seeding demo data.
         appSettingsDao.insertOrUpdateSettings(AppSettings(hasSeeded = !keepDemoSeeding))

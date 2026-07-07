@@ -22,6 +22,9 @@ interface ClientDao {
 
     @Delete
     suspend fun deleteClient(client: Client)
+
+    @Query("DELETE FROM clients")
+    suspend fun deleteAllClients()
 }
 
 @Dao
@@ -47,6 +50,9 @@ interface DealDao {
     @Delete
     suspend fun deleteDeal(deal: Deal)
 
+    @Query("DELETE FROM deals")
+    suspend fun deleteAllDeals()
+
     @Query("DELETE FROM deals WHERE clientId = :clientId")
     suspend fun deleteDealsByClientId(clientId: Int)
 }
@@ -70,6 +76,9 @@ interface InteractionDao {
 
     @Delete
     suspend fun deleteInteraction(interaction: Interaction)
+
+    @Query("DELETE FROM interactions")
+    suspend fun deleteAllInteractions()
 
     @Query("DELETE FROM interactions WHERE clientId = :clientId")
     suspend fun deleteInteractionsByClientId(clientId: Int)
@@ -97,6 +106,9 @@ interface FollowUpDao {
 
     @Delete
     suspend fun deleteFollowUp(followUp: FollowUp)
+
+    @Query("DELETE FROM follow_ups")
+    suspend fun deleteAllFollowUps()
 
     @Query("DELETE FROM follow_ups WHERE clientId = :clientId")
     suspend fun deleteFollowUpsByClientId(clientId: Int)

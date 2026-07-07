@@ -8,6 +8,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +33,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -81,14 +86,43 @@ fun ClientProfileScreen(
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Info", "Deals", "Interactions", "Follow-Ups")
 
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { tabs.size })
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTab = pagerState.currentPage
+    }
+
+    LaunchedEffect(selectedTab) {
+        if (pagerState.currentPage != selectedTab) {
+            pagerState.animateScrollToPage(selectedTab)
+        }
+    }
+
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
-        val hasOpenDeals = clientDeals.any { it.status == "Open" }
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete ${client.name}?") },
-            text = { Text(if (hasOpenDeals) "This client has OPEN deals. Deleting them will remove their entire history. This action cannot be undone." else "Are you sure you want to delete this client? All details and logs will be permanently deleted.") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "This action is permanent and cannot be undone.",
+                        fontWeight = FontWeight.SemiBold,
+                        color = LostRed
+                    )
+                    Text("The following associated records for ${client.name} will be permanently deleted:")
+                    
+                    Column(
+                        modifier = Modifier.padding(start = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("• ${clientDeals.size} Deal(s) (${clientDeals.count { it.status == "Open" }} open)")
+                        Text("• ${clientInteractions.size} Interaction Log(s)")
+                        Text("• ${clientFollowUps.size} Follow-up Reminder(s) (scheduled alarms will be cancelled)")
+                    }
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -174,7 +208,7 @@ fun ClientProfileScreen(
                         ProfileActionButton(icon = Icons.Default.AddAlert, label = "+ Reminder", color = WarningAmber) {
                             navController.navigate("add_edit_follow_up?clientId=${client.id}")
                         }
-                        ProfileActionButton(icon = Icons.Default.AddCard, label = "+ Deal", color = Color(0xFF6A1B9A)) {
+                        ProfileActionButton(icon = Icons.Default.AddCard, label = "+ Deal", color = ProposalPurple) {
                             navController.navigate("add_edit_deal?clientId=${client.id}")
                         }
                     }
@@ -197,15 +231,16 @@ fun ClientProfileScreen(
                 }
             }
 
-            Box(
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(ScreenBg)
-            ) {
-                when (selectedTab) {
+            ) { page ->
+                when (page) {
                     0 -> InfoTabContent(client)
-                    1 -> DealsTabContent(clientDeals, settings.currency, navController, client.id)
-                    2 -> InteractionsTabContent(clientInteractions, navController, client.id)
+                    1 -> DealsTabContent(clientDeals, settings.currency, viewModel, navController, client.id)
+                    2 -> InteractionsTabContent(clientInteractions, viewModel, navController, client.id)
                     3 -> FollowUpsTabContent(clientFollowUps, viewModel, context, navController, client.id)
                 }
             }
@@ -291,7 +326,41 @@ fun InfoRowCard(label: String, value: String, icon: ImageVector) {
 }
 
 @Composable
-fun DealsTabContent(deals: List<Deal>, currency: String, navController: NavController, clientId: Int) {
+fun DealsTabContent(
+    deals: List<Deal>,
+    currency: String,
+    viewModel: MainViewModel,
+    navController: NavController,
+    clientId: Int
+) {
+    var dealToDelete by remember { mutableStateOf<Deal?>(null) }
+
+    if (dealToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { dealToDelete = null },
+            title = { Text("Delete Deal?") },
+            text = { Text("Are you sure you want to permanently delete \"${dealToDelete?.title}\"?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        dealToDelete?.let { deal ->
+                            viewModel.deleteDeal(deal) {}
+                        }
+                        dealToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = LostRed)
+                ) {
+                    Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { dealToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (deals.isEmpty()) {
         EmptyStateView(
             icon = Icons.Outlined.Handshake,
@@ -307,7 +376,11 @@ fun DealsTabContent(deals: List<Deal>, currency: String, navController: NavContr
             modifier = Modifier.fillMaxSize()
         ) {
             items(deals) { deal ->
-                DealCardRow(deal, currency) {
+                DealCardRow(
+                    deal = deal,
+                    currency = currency,
+                    onDelete = { dealToDelete = deal }
+                ) {
                     navController.navigate("add_edit_deal?dealId=${deal.id}")
                 }
             }
@@ -316,7 +389,40 @@ fun DealsTabContent(deals: List<Deal>, currency: String, navController: NavContr
 }
 
 @Composable
-fun InteractionsTabContent(interactions: List<Interaction>, navController: NavController, clientId: Int) {
+fun InteractionsTabContent(
+    interactions: List<Interaction>,
+    viewModel: MainViewModel,
+    navController: NavController,
+    clientId: Int
+) {
+    var interactionToDelete by remember { mutableStateOf<Interaction?>(null) }
+
+    if (interactionToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { interactionToDelete = null },
+            title = { Text("Delete Interaction?") },
+            text = { Text("Are you sure you want to permanently delete this interaction log?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        interactionToDelete?.let { interaction ->
+                            viewModel.deleteInteraction(interaction) {}
+                        }
+                        interactionToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = LostRed)
+                ) {
+                    Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { interactionToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (interactions.isEmpty()) {
         EmptyStateView(
             icon = Icons.Outlined.Chat,
@@ -332,7 +438,10 @@ fun InteractionsTabContent(interactions: List<Interaction>, navController: NavCo
             modifier = Modifier.fillMaxSize()
         ) {
             items(interactions) { interaction ->
-                InteractionCardRow(interaction) {
+                InteractionCardRow(
+                    interaction = interaction,
+                    onDelete = { interactionToDelete = interaction }
+                ) {
                     navController.navigate("add_edit_interaction?interactionId=${interaction.id}")
                 }
             }
@@ -348,6 +457,34 @@ fun FollowUpsTabContent(
     navController: NavController,
     clientId: Int
 ) {
+    var followUpToDelete by remember { mutableStateOf<FollowUp?>(null) }
+
+    if (followUpToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { followUpToDelete = null },
+            title = { Text("Delete Reminder?") },
+            text = { Text("Are you sure you want to permanently delete this reminder? Any scheduled alarm will be cancelled.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        followUpToDelete?.let { followUp ->
+                            viewModel.deleteFollowUp(context, followUp) {}
+                        }
+                        followUpToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = LostRed)
+                ) {
+                    Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { followUpToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (followUps.isEmpty()) {
         EmptyStateView(
             icon = Icons.Outlined.NotificationsNone,
@@ -369,6 +506,7 @@ fun FollowUpsTabContent(
                     showClientName = false,
                     onDone = { viewModel.markFollowUpDone(context, item) },
                     onSnooze = { viewModel.snoozeFollowUp(context, item) },
+                    onDelete = { followUpToDelete = item },
                     onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
                 )
             }
@@ -392,19 +530,16 @@ fun DealListScreen(
     var selectedStatusTab by remember { mutableStateOf(0) }
     val tabs = listOf("All", "Open", "Won", "Lost", "On Hold")
 
-    val filteredDeals = remember(deals, selectedStatusTab) {
-        when (selectedStatusTab) {
-            0 -> deals
-            1 -> deals.filter { it.status == "Open" }
-            2 -> deals.filter { it.status == "Won" }
-            3 -> deals.filter { it.status == "Lost" }
-            4 -> deals.filter { it.status == "On Hold" }
-            else -> deals
-        }
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { tabs.size })
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedStatusTab = pagerState.currentPage
     }
 
-    val totalValue = remember(filteredDeals, settings.currency) {
-        filteredDeals.sumOf { it.finalPrice ?: it.offeredPrice }
+    LaunchedEffect(selectedStatusTab) {
+        if (pagerState.currentPage != selectedStatusTab) {
+            pagerState.animateScrollToPage(selectedStatusTab)
+        }
     }
 
     Scaffold(
@@ -445,49 +580,78 @@ fun DealListScreen(
                 }
             }
 
-            // Total Value banner
-            Surface(
-                color = PrimaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Total filtered value:",
-                        style = AppTypography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = PrimaryBlue
-                    )
-                    Text(
-                        text = formatCurrency(totalValue, settings.currency),
-                        style = AppTypography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
-                    )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val pageDeals = remember(deals, page) {
+                    when (page) {
+                        0 -> deals
+                        1 -> deals.filter { it.status == "Open" }
+                        2 -> deals.filter { it.status == "Won" }
+                        3 -> deals.filter { it.status == "Lost" }
+                        4 -> deals.filter { it.status == "On Hold" }
+                        else -> deals
+                    }
                 }
-            }
 
-            if (filteredDeals.isEmpty()) {
-                EmptyStateView(
-                    icon = Icons.Outlined.Handshake,
-                    title = "No deals here",
-                    description = "Deals help you record offers, negotiate stages and secure wins.",
-                    buttonText = "New Deal",
-                    onButtonClick = { navController.navigate("add_edit_deal") }
-                )
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredDeals) { deal ->
-                        val clientName = clients.find { it.id == deal.clientId }?.name ?: "Unknown Client"
-                        DealCardRow(deal, settings.currency, clientName) {
-                            navController.navigate("add_edit_deal?dealId=${deal.id}")
+                val pageTotalValue = remember(pageDeals, settings.currency) {
+                    pageDeals.sumOf { it.finalPrice ?: it.offeredPrice }
+                }
+
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Total Value banner
+                    Surface(
+                        color = PrimaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Total filtered value:",
+                                style = AppTypography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = PrimaryBlue
+                            )
+                            Text(
+                                text = formatCurrency(pageTotalValue, settings.currency),
+                                style = AppTypography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                        }
+                    }
+
+                    if (pageDeals.isEmpty()) {
+                        EmptyStateView(
+                            icon = Icons.Outlined.Handshake,
+                            title = "No deals here",
+                            description = "Deals help you record offers, negotiate stages and secure wins.",
+                            buttonText = "New Deal",
+                            onButtonClick = { navController.navigate("add_edit_deal") }
+                        )
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(pageDeals) { deal ->
+                                val clientName = clients.find { it.id == deal.clientId }?.name ?: "Unknown Client"
+                                DealCardRow(
+                                    deal = deal,
+                                    currency = settings.currency,
+                                    clientName = clientName,
+                                    onClientClick = {
+                                        navController.navigate("client_profile/${deal.clientId}")
+                                    }
+                                ) {
+                                    navController.navigate("add_edit_deal?dealId=${deal.id}")
+                                }
+                            }
                         }
                     }
                 }
@@ -501,6 +665,8 @@ fun DealCardRow(
     deal: Deal,
     currency: String,
     clientName: String = "",
+    onDelete: (() -> Unit)? = null,
+    onClientClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val accentColor = when (deal.status.lowercase(Locale.getDefault())) {
@@ -545,11 +711,32 @@ fun DealCardRow(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (clientName.isNotEmpty()) {
-                        Text(
-                            text = clientName,
-                            style = AppTypography.bodySmall,
-                            color = OnSurfaceVariantText
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .padding(top = 2.dp, bottom = 2.dp)
+                                .then(
+                                    if (onClientClick != null) Modifier.clickable { onClientClick() }
+                                    else Modifier
+                                )
+                        ) {
+                            if (onClientClick != null) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = PrimaryBlue
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = clientName,
+                                style = AppTypography.bodySmall.copy(
+                                    fontWeight = if (onClientClick != null) FontWeight.SemiBold else FontWeight.Normal
+                                ),
+                                color = if (onClientClick != null) PrimaryBlue else OnSurfaceVariantText
+                            )
+                        }
                     }
                     Text(
                         text = "Stage: ${deal.stage}",
@@ -568,6 +755,19 @@ fun DealCardRow(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     StatusChip(deal.status)
+                }
+                if (onDelete != null) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Deal",
+                            tint = LostRed.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
         }
@@ -826,7 +1026,13 @@ fun AddEditDealScreen(
                 .padding(16.dp)
         ) {
             // Client Dropdown Selector
-            Text("Client Partner", style = AppTypography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+            ClientSelectionHeader(
+                selectedClientId = selectedClientId,
+                onClientSelected = { selectedClientId = it },
+                clients = clients,
+                viewModel = viewModel,
+                navController = navController
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 val currentClient = clients.find { it.id == selectedClientId }
@@ -1223,7 +1429,13 @@ fun AddEditInteractionScreen(
                 .padding(16.dp)
         ) {
             // Client Dropdown Selector
-            Text("Client Partner", style = AppTypography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+            ClientSelectionHeader(
+                selectedClientId = selectedClientId,
+                onClientSelected = { selectedClientId = it },
+                clients = clients,
+                viewModel = viewModel,
+                navController = navController
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 val currentClient = clients.find { it.id == selectedClientId }
@@ -1488,6 +1700,7 @@ fun AddEditInteractionScreen(
 @Composable
 fun InteractionCardRow(
     interaction: Interaction,
+    onDelete: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val icon = when (interaction.contactMethod.lowercase(Locale.getDefault())) {
@@ -1569,6 +1782,19 @@ fun InteractionCardRow(
                     }
                 }
             }
+            if (onDelete != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Interaction",
+                        tint = LostRed.copy(alpha = 0.8f)
+                    )
+                }
+            }
         }
     }
 }
@@ -1588,6 +1814,18 @@ fun FollowUpListScreen(
 
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Today", "Upcoming")
+
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { tabs.size })
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTab = pagerState.currentPage
+    }
+
+    LaunchedEffect(selectedTab) {
+        if (pagerState.currentPage != selectedTab) {
+            pagerState.animateScrollToPage(selectedTab)
+        }
+    }
 
     val now = System.currentTimeMillis()
     val todayStart = Calendar.getInstance().apply {
@@ -1647,111 +1885,125 @@ fun FollowUpListScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(ScreenBg)
-            ) {
-                if (selectedTab == 0) {
-                    // Today Tab: Overdue + Due Today
-                    if (overdueList.isEmpty() && todayList.isEmpty()) {
-                        EmptyStateView(
-                            icon = Icons.Outlined.CheckCircle,
-                            title = "All caught up!",
-                            description = "You have no outstanding follow-ups scheduled for today.",
-                            buttonText = "Set Reminder",
-                            onButtonClick = { navController.navigate("add_edit_follow_up") }
-                        )
-                    } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            if (overdueList.isNotEmpty()) {
-                                item {
-                                    Text(
-                                        text = "Overdue Reminders (${overdueList.size})",
-                                        color = LostRed,
-                                        style = AppTypography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(ScreenBg)
+                ) {
+                    if (page == 0) {
+                        // Today Tab: Overdue + Due Today
+                        if (overdueList.isEmpty() && todayList.isEmpty()) {
+                            EmptyStateView(
+                                icon = Icons.Outlined.CheckCircle,
+                                title = "All caught up!",
+                                description = "You have no outstanding follow-ups scheduled for today.",
+                                buttonText = "Set Reminder",
+                                onButtonClick = { navController.navigate("add_edit_follow_up") }
+                            )
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                if (overdueList.isNotEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "Overdue Reminders (${overdueList.size})",
+                                            color = LostRed,
+                                            style = AppTypography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                    }
+                                    items(overdueList) { item ->
+                                        val clientName = clients.find { it.id == item.clientId }?.name ?: "Client"
+                                        FollowUpCardRow(
+                                            followUp = item,
+                                            clientName = clientName,
+                                            showClientName = true,
+                                            onClientClick = {
+                                                navController.navigate("client_profile/${item.clientId}")
+                                            },
+                                            onDone = { viewModel.markFollowUpDone(context, item) },
+                                            onSnooze = { viewModel.snoozeFollowUp(context, item) },
+                                            onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
+                                        )
+                                    }
                                 }
-                                items(overdueList) { item ->
-                                    val clientName = clients.find { it.id == item.clientId }?.name ?: "Client"
-                                    FollowUpCardRow(
-                                        followUp = item,
-                                        clientName = clientName,
-                                        showClientName = true,
-                                        onDone = { viewModel.markFollowUpDone(context, item) },
-                                        onSnooze = { viewModel.snoozeFollowUp(context, item) },
-                                        onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
-                                    )
-                                }
-                            }
 
-                            if (todayList.isNotEmpty()) {
-                                item {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Due Today (${todayList.size})",
-                                        color = PrimaryBlue,
-                                        style = AppTypography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
-                                }
-                                items(todayList) { item ->
-                                    val clientName = clients.find { it.id == item.clientId }?.name ?: "Client"
-                                    FollowUpCardRow(
-                                        followUp = item,
-                                        clientName = clientName,
-                                        showClientName = true,
-                                        onDone = { viewModel.markFollowUpDone(context, item) },
-                                        onSnooze = { viewModel.snoozeFollowUp(context, item) },
-                                        onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
-                                    )
+                                if (todayList.isNotEmpty()) {
+                                    item {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Due Today (${todayList.size})",
+                                            color = PrimaryBlue,
+                                            style = AppTypography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                    }
+                                    items(todayList) { item ->
+                                        val clientName = clients.find { it.id == item.clientId }?.name ?: "Client"
+                                        FollowUpCardRow(
+                                            followUp = item,
+                                            clientName = clientName,
+                                            showClientName = true,
+                                            onClientClick = {
+                                                navController.navigate("client_profile/${item.clientId}")
+                                            },
+                                            onDone = { viewModel.markFollowUpDone(context, item) },
+                                            onSnooze = { viewModel.snoozeFollowUp(context, item) },
+                                            onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    // Upcoming Tab
-                    if (upcomingList.isEmpty()) {
-                        EmptyStateView(
-                            icon = Icons.Outlined.CalendarMonth,
-                            title = "Nothing scheduled",
-                            description = "Schedule reminders to follow up on open negotiations.",
-                            buttonText = "Set Reminder",
-                            onButtonClick = { navController.navigate("add_edit_follow_up") }
-                        )
                     } else {
-                        // Group by date
-                        val grouped = upcomingList.groupBy { formatDate(it.scheduledDateTime) }
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            grouped.forEach { (dateStr, items) ->
-                                item {
-                                    Text(
-                                        text = dateStr,
-                                        color = OnSurfaceText,
-                                        style = AppTypography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
-                                }
-                                items(items) { item ->
-                                    val clientName = clients.find { it.id == item.clientId }?.name ?: "Client"
-                                    FollowUpCardRow(
-                                        followUp = item,
-                                        clientName = clientName,
-                                        showClientName = true,
-                                        onDone = { viewModel.markFollowUpDone(context, item) },
-                                        onSnooze = { viewModel.snoozeFollowUp(context, item) },
-                                        onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
-                                    )
+                        // Upcoming Tab
+                        if (upcomingList.isEmpty()) {
+                            EmptyStateView(
+                                icon = Icons.Outlined.CalendarMonth,
+                                title = "Nothing scheduled",
+                                description = "Schedule reminders to follow up on open negotiations.",
+                                buttonText = "Set Reminder",
+                                onButtonClick = { navController.navigate("add_edit_follow_up") }
+                            )
+                        } else {
+                            // Group by date
+                            val grouped = upcomingList.groupBy { formatDate(it.scheduledDateTime) }
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                grouped.forEach { (dateStr, items) ->
+                                    item {
+                                        Text(
+                                            text = dateStr,
+                                            color = OnSurfaceText,
+                                            style = AppTypography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                    }
+                                    items(items) { item ->
+                                        val clientName = clients.find { it.id == item.clientId }?.name ?: "Client"
+                                        FollowUpCardRow(
+                                            followUp = item,
+                                            clientName = clientName,
+                                            showClientName = true,
+                                            onClientClick = {
+                                                navController.navigate("client_profile/${item.clientId}")
+                                            },
+                                            onDone = { viewModel.markFollowUpDone(context, item) },
+                                            onSnooze = { viewModel.snoozeFollowUp(context, item) },
+                                            onClick = { navController.navigate("add_edit_follow_up?followUpId=${item.id}") }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1767,8 +2019,10 @@ fun FollowUpCardRow(
     followUp: FollowUp,
     clientName: String,
     showClientName: Boolean = true,
+    onClientClick: (() -> Unit)? = null,
     onDone: () -> Unit,
     onSnooze: () -> Unit,
+    onDelete: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val borderAccent = when (followUp.priority.lowercase(Locale.getDefault())) {
@@ -1808,14 +2062,33 @@ fun FollowUpCardRow(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         if (showClientName) {
-                            Text(
-                                text = clientName,
-                                style = AppTypography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = OnSurfaceText,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(bottom = 2.dp)
+                                    .then(
+                                        if (onClientClick != null) Modifier.clickable { onClientClick() }
+                                        else Modifier
+                                    )
+                            ) {
+                                if (onClientClick != null) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = PrimaryBlue
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = clientName,
+                                    style = AppTypography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (onClientClick != null) PrimaryBlue else OnSurfaceText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                         Text(
                             text = followUp.note,
@@ -1825,7 +2098,22 @@ fun FollowUpCardRow(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    PriorityChip(followUp.priority)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PriorityChip(followUp.priority)
+                        if (onDelete != null) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = onDelete,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Reminder",
+                                    tint = LostRed.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -2020,7 +2308,13 @@ fun AddEditFollowUpScreen(
                 .padding(16.dp)
         ) {
             // Client Dropdown Selector
-            Text("Client Partner", style = AppTypography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+            ClientSelectionHeader(
+                selectedClientId = selectedClientId,
+                onClientSelected = { selectedClientId = it },
+                clients = clients,
+                viewModel = viewModel,
+                navController = navController
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 val currentClient = clients.find { it.id == selectedClientId }
@@ -2263,6 +2557,8 @@ fun SettingsScreen(
                                 val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                                 intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                 context.startActivity(intent)
+                                // Terminate current process to guarantee a clean start with fresh singletons and view models
+                                android.os.Process.killProcess(android.os.Process.myPid())
                             } else {
                                 Toast.makeText(context, "Failed to restore database from backup file", Toast.LENGTH_SHORT).show()
                             }
@@ -2734,7 +3030,14 @@ fun SearchScreen(
                         }
                         items(matchedDeals) { d ->
                             val clientName = clients.find { it.id == d.clientId }?.name ?: "Client"
-                            DealCardRow(d, settings.currency, clientName) {
+                            DealCardRow(
+                                deal = d,
+                                currency = settings.currency,
+                                clientName = clientName,
+                                onClientClick = {
+                                    navController.navigate("client_profile/${d.clientId}")
+                                }
+                            ) {
                                 navController.navigate("add_edit_deal?dealId=${d.id}")
                             }
                         }
@@ -2937,11 +3240,43 @@ fun isValidSqliteFile(file: File): Boolean {
         return false
     }
     val expected = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
-    return header.contentEquals(expected)
+    if (!header.contentEquals(expected)) return false
+
+    // Try opening as an SQLite database to ensure it's not corrupted/empty/invalid
+    return try {
+        android.database.sqlite.SQLiteDatabase.openDatabase(
+            file.absolutePath,
+            null,
+            android.database.sqlite.SQLiteDatabase.OPEN_READONLY
+        ).use { db ->
+            db.rawQuery("PRAGMA quick_check", null).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val result = cursor.getString(0)
+                    result == "ok"
+                } else {
+                    false
+                }
+            }
+        }
+    } catch (e: Exception) {
+        false
+    }
 }
 
 fun restoreDatabase(context: Context, inputStream: java.io.InputStream): Boolean {
     val tempFile = File(context.cacheDir, "temp_restore.db")
+    val dbFile = context.getDatabasePath("track_deals_database")
+    val walFile = File(dbFile.path + "-wal")
+    val shmFile = File(dbFile.path + "-shm")
+    val journalFile = File(dbFile.path + "-journal")
+
+    val backupDbFile = File(dbFile.path + ".bak")
+    val backupWalFile = File(dbFile.path + "-wal.bak")
+    val backupShmFile = File(dbFile.path + "-shm.bak")
+    val backupJournalFile = File(dbFile.path + "-journal.bak")
+
+    var backupCreated = false
+
     return try {
         // 1. Copy input stream to temp file
         tempFile.outputStream().use { output ->
@@ -2950,46 +3285,336 @@ fun restoreDatabase(context: Context, inputStream: java.io.InputStream): Boolean
             }
         }
 
-        // 2. Validate temp file is a valid SQLite DB
+        // 2. Validate temp file is a valid, uncorrupted SQLite DB
         if (!isValidSqliteFile(tempFile)) {
-            tempFile.delete()
+            if (tempFile.exists()) tempFile.delete()
             return false
         }
 
-        // 3. Backup the current live database files
-        val dbFile = context.getDatabasePath("track_deals_database")
+        // 3. Flush live database WAL before closing to make sure main file is up to date
+        val db = AppDatabase.getDatabase(context)
+        try {
+            db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 4. Backup the current live database files
         if (dbFile.exists()) {
-            val backupFile = File(dbFile.path + ".bak")
             dbFile.inputStream().use { input ->
-                backupFile.outputStream().use { output ->
+                backupDbFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            backupCreated = true
+        }
+        if (walFile.exists()) {
+            walFile.inputStream().use { input ->
+                backupWalFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+        if (shmFile.exists()) {
+            shmFile.inputStream().use { input ->
+                backupShmFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+        if (journalFile.exists()) {
+            journalFile.inputStream().use { input ->
+                backupJournalFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
         }
 
-        // 4. Close database connection and reset the instance
+        // 5. Close database connection and reset the instance
         AppDatabase.closeAndResetInstance()
 
-        // 5. Delete live database and support files
-        val walFile = File(dbFile.path + "-wal")
-        val shmFile = File(dbFile.path + "-shm")
+        // 6. Delete live database and support files
         if (walFile.exists()) walFile.delete()
         if (shmFile.exists()) shmFile.delete()
+        if (journalFile.exists()) journalFile.delete()
         if (dbFile.exists()) dbFile.delete()
 
-        // 6. Copy temp file to live database path
+        // 7. Copy temp file to live database path
         tempFile.inputStream().use { input ->
             dbFile.outputStream().use { output ->
                 input.copyTo(output)
             }
         }
 
-        // 7. Cleanup temp file
+        // 8. Cleanup temp file & backup files on successful restore
         tempFile.delete()
+        if (backupDbFile.exists()) backupDbFile.delete()
+        if (backupWalFile.exists()) backupWalFile.delete()
+        if (backupShmFile.exists()) backupShmFile.delete()
+        if (backupJournalFile.exists()) backupJournalFile.delete()
         true
     } catch (e: Exception) {
         e.printStackTrace()
         if (tempFile.exists()) tempFile.delete()
+
+        // 9. Rollback transaction: If anything went wrong, restore original live database files from backups
+        if (backupCreated && backupDbFile.exists()) {
+            try {
+                AppDatabase.closeAndResetInstance()
+
+                if (dbFile.exists()) dbFile.delete()
+                if (walFile.exists()) walFile.delete()
+                if (shmFile.exists()) shmFile.delete()
+                if (journalFile.exists()) journalFile.delete()
+
+                backupDbFile.inputStream().use { input ->
+                    dbFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (backupWalFile.exists()) {
+                    backupWalFile.inputStream().use { input ->
+                        walFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+                if (backupShmFile.exists()) {
+                    backupShmFile.inputStream().use { input ->
+                        shmFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+                if (backupJournalFile.exists()) {
+                    backupJournalFile.inputStream().use { input ->
+                        journalFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            } catch (rollbackEx: Exception) {
+                rollbackEx.printStackTrace()
+            } finally {
+                // Ensure backups are cleaned up after rollback
+                if (backupDbFile.exists()) backupDbFile.delete()
+                if (backupWalFile.exists()) backupWalFile.delete()
+                if (backupShmFile.exists()) backupShmFile.delete()
+                if (backupJournalFile.exists()) backupJournalFile.delete()
+            }
+        }
         false
+    }
+}
+
+@Composable
+fun ClientSelectionHeader(
+    selectedClientId: Int,
+    onClientSelected: (Int) -> Unit,
+    clients: List<Client>,
+    viewModel: MainViewModel,
+    navController: NavController
+) {
+    val context = LocalContext.current
+    var showQuickAddClientDialog by remember { mutableStateOf(false) }
+    var quickClientName by remember { mutableStateOf("") }
+    var quickClientPhone by remember { mutableStateOf("") }
+    var quickClientCompany by remember { mutableStateOf("") }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                var name = ""
+                var phone = ""
+                val contentResolver = context.contentResolver
+                val cursor = contentResolver.query(uri, null, null, null, null)
+                if (cursor != null && cursor.moveToFirst()) {
+                    val idIndex = cursor.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                    val nameIndex = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                    if (idIndex != -1 && nameIndex != -1) {
+                        val contactId = cursor.getString(idIndex)
+                        name = cursor.getString(nameIndex)
+
+                        // Query phone number
+                        val phonesCursor = contentResolver.query(
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            null,
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                            arrayOf(contactId),
+                            null
+                        )
+                        if (phonesCursor != null && phonesCursor.moveToFirst()) {
+                            val numberIndex = phonesCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                            if (numberIndex != -1) {
+                                phone = phonesCursor.getString(numberIndex)
+                            }
+                            phonesCursor.close()
+                        }
+                    }
+                    cursor.close()
+                }
+                
+                if (name.isNotEmpty()) {
+                    val newClient = Client(
+                        name = name,
+                        phone = phone,
+                        clientType = "Prospect",
+                        city = "",
+                        companyName = "",
+                        source = "Phone Book",
+                        notes = "Imported from Phone Book"
+                    )
+                    viewModel.saveClient(newClient) { newId ->
+                        onClientSelected(newId.toInt())
+                        Toast.makeText(context, "Client added: $name", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ContactPicker", "Error picking contact", e)
+                Toast.makeText(context, "Error picking contact", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    if (showQuickAddClientDialog) {
+        AlertDialog(
+            onDismissRequest = { showQuickAddClientDialog = false },
+            title = { Text("Quick Add Client") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = quickClientName,
+                        onValueChange = { quickClientName = it },
+                        label = { Text("Name") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = OutlineColor
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = quickClientPhone,
+                        onValueChange = { quickClientPhone = it },
+                        label = { Text("Phone") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = OutlineColor
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = quickClientCompany,
+                        onValueChange = { quickClientCompany = it },
+                        label = { Text("Company (Optional)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = OutlineColor
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (quickClientName.isBlank()) {
+                            Toast.makeText(context, "Name cannot be empty", Toast.LENGTH_SHORT).show()
+                        } else {
+                            val newClient = Client(
+                                name = quickClientName.trim(),
+                                phone = quickClientPhone.trim(),
+                                companyName = quickClientCompany.trim(),
+                                clientType = "Prospect"
+                            )
+                            viewModel.saveClient(newClient) { newId ->
+                                onClientSelected(newId.toInt())
+                                showQuickAddClientDialog = false
+                                quickClientName = ""
+                                quickClientPhone = ""
+                                quickClientCompany = ""
+                                Toast.makeText(context, "Client created & selected", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                ) {
+                    Text("Add & Select", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showQuickAddClientDialog = false }) {
+                    Text("Cancel", color = PrimaryBlue)
+                }
+            }
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Client Partner",
+                style = AppTypography.bodySmall,
+                color = PrimaryBlue,
+                fontWeight = FontWeight.SemiBold
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (selectedClientId != 0) {
+                    IconButton(
+                        onClick = {
+                            navController.navigate("client_profile/$selectedClientId")
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBox,
+                            contentDescription = "View Profile",
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = {
+                        contactPickerLauncher.launch(null)
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContactPhone,
+                        contentDescription = "Add from Contacts",
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        showQuickAddClientDialog = true
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = "Quick New Client",
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
     }
 }

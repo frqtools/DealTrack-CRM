@@ -1,6 +1,8 @@
 package com.frqtools.dealtrackcrm.data
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "clients")
@@ -17,7 +19,18 @@ data class Client(
     val isActive: Boolean = true
 )
 
-@Entity(tableName = "deals")
+@Entity(
+    tableName = "deals",
+    foreignKeys = [
+        ForeignKey(
+            entity = Client::class,
+            parentColumns = ["id"],
+            childColumns = ["clientId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["clientId"])]
+)
 data class Deal(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val clientId: Int,
@@ -33,7 +46,18 @@ data class Deal(
     val dateCreated: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "interactions")
+@Entity(
+    tableName = "interactions",
+    foreignKeys = [
+        ForeignKey(
+            entity = Client::class,
+            parentColumns = ["id"],
+            childColumns = ["clientId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["clientId"])]
+)
 data class Interaction(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val clientId: Int,
@@ -47,7 +71,18 @@ data class Interaction(
     val myNextStep: String = ""
 )
 
-@Entity(tableName = "follow_ups")
+@Entity(
+    tableName = "follow_ups",
+    foreignKeys = [
+        ForeignKey(
+            entity = Client::class,
+            parentColumns = ["id"],
+            childColumns = ["clientId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["clientId"])]
+)
 data class FollowUp(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val clientId: Int,

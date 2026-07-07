@@ -44,14 +44,15 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     // --- Actions ---
     
     // Clients
-    fun saveClient(client: Client, onComplete: () -> Unit = {}) {
+    fun saveClient(client: Client, onComplete: (Long) -> Unit = {}) {
         viewModelScope.launch {
-            if (client.id == 0) {
+            val id = if (client.id == 0) {
                 repository.insertClient(client)
             } else {
                 repository.updateClient(client)
+                client.id.toLong()
             }
-            onComplete()
+            onComplete(id)
         }
     }
 
@@ -189,6 +190,9 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     fun clearAllData(keepDemoSeeding: Boolean = false, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.clearAllData(keepDemoSeeding)
+            if (keepDemoSeeding) {
+                seedSampleData()
+            }
             onComplete()
         }
     }

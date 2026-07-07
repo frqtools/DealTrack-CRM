@@ -12,41 +12,41 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryBlue,
+    primary = BrandPrimaryBlue,
     onPrimary = Color.White,
-    primaryContainer = PrimaryContainer,
-    onPrimaryContainer = PrimaryBlue,
-    secondary = PrimaryLight,
+    primaryContainer = BrandPrimaryContainer,
+    onPrimaryContainer = BrandPrimaryBlue,
+    secondary = BrandPrimaryLight,
     onSecondary = Color.White,
-    background = LightScreenBg,
-    onBackground = LightOnSurfaceText,
-    surface = LightSurfaceBg,
-    onSurface = LightOnSurfaceText,
-    surfaceVariant = LightScreenBg,
-    onSurfaceVariant = LightOnSurfaceVariantText,
-    outline = OutlineColor
+    background = BrandLightScreenBg,
+    onBackground = BrandLightOnSurfaceText,
+    surface = BrandLightSurfaceBg,
+    onSurface = BrandLightOnSurfaceText,
+    surfaceVariant = BrandLightScreenBg,
+    onSurfaceVariant = BrandLightOnSurfaceVariantText,
+    outline = BrandOutlineColor
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryBlue,
-    onPrimary = Color.White,
-    primaryContainer = PrimaryContainer,
-    onPrimaryContainer = PrimaryBlue,
-    secondary = PrimaryLight,
-    onSecondary = Color.White,
-    background = Color(0xFF121212),
-    onBackground = Color.White,
-    surface = Color(0xFF1E1E1E),
-    onSurface = Color.White,
-    surfaceVariant = Color(0xFF2C2C2C),
-    onSurfaceVariant = Color(0xFFB0B0B0),
-    outline = Color(0xFF404040)
+    primary = BrandDarkPrimaryBlue,
+    onPrimary = Color(0xFF0D47A1),
+    primaryContainer = BrandDarkPrimaryContainer,
+    onPrimaryContainer = Color(0xFFE3F2FD),
+    secondary = BrandDarkPrimaryLight,
+    onSecondary = Color(0xFF0D47A1),
+    background = Color(0xFF0F172A),          // Elegant deep Slate-900 background
+    onBackground = Color(0xFFF8FAFC),
+    surface = Color(0xFF1E293B),             // High-contrast Slate-800 for card surfaces
+    onSurface = Color(0xFFF8FAFC),
+    surfaceVariant = Color(0xFF334155),      // Slate-700
+    onSurfaceVariant = Color(0xFF94A3B8),    // Muted slate text
+    outline = Color(0xFF475569)              // Subtle borders
 )
 
 @Composable
 fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Keep it consistent with our brand colors by default
+    dynamicColor: Boolean = false, // Keep consistent with brand by default
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
