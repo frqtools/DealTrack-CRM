@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
 
         val db = AppDatabase.getDatabase(applicationContext)
         val repository = AppRepository(db)
-        val viewModel: MainViewModel by viewModels { ViewModelFactory(repository) }
+        val viewModel: MainViewModel by viewModels { ViewModelFactory(applicationContext, repository) }
 
         setContent {
             MyApplicationTheme {

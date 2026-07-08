@@ -933,12 +933,11 @@ fun AddEditClientScreen(
                     val hasPhone = cursor.getString(hasPhoneIndex)
 
                     if (hasPhone == "1") {
-                        val contactDataUri = Uri.withAppendedPath(uri, ContactsContract.Contacts.Data.CONTENT_DIRECTORY)
                         val phonesCursor = contentResolver.query(
-                            contactDataUri,
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                             null,
-                            ContactsContract.Data.MIMETYPE + " = ?",
-                            arrayOf(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE),
+                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                            arrayOf(contactId),
                             null
                         )
                         if (phonesCursor != null && phonesCursor.moveToFirst()) {
@@ -955,6 +954,16 @@ fun AddEditClientScreen(
             } catch (e: Exception) {
                 Toast.makeText(context, "Failed to import contact: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            contactPickerLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permission to read contacts is required to import contacts", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1018,7 +1027,15 @@ fun AddEditClientScreen(
             if (!isEdit) {
                 Button(
                     onClick = {
-                        contactPickerLauncher.launch(null)
+                        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.READ_CONTACTS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (hasPermission) {
+                            contactPickerLauncher.launch(null)
+                        } else {
+                            permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue.copy(alpha = 0.1f)),
                     shape = RoundedCornerShape(24.dp),

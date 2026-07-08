@@ -2827,42 +2827,6 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Export CSV
-                    Button(
-                        onClick = {
-                            val csvContent = buildString {
-                                append("=== CLIENTS ===\n")
-                                append("ID,Name,Phone,Company,City,Type,Source,Notes\n")
-                                clients.forEach {
-                                    append("${it.id},\"${it.name}\",\"${it.phone}\",\"${it.companyName}\",\"${it.city}\",\"${it.clientType}\",\"${it.source}\",\"${it.notes}\"\n")
-                                }
-                                append("\n=== DEALS ===\n")
-                                append("ID,ClientID,Title,OfferedPrice,FinalPrice,Stage,Status,ClosedDate,LostReason\n")
-                                deals.forEach {
-                                    append("${it.id},${it.clientId},\"${it.title}\",${it.offeredPrice},${it.finalPrice ?: 0.0},\"${it.stage}\",\"${it.status}\",${it.closedDate ?: 0},\"${it.lostReason ?: ""}\"\n")
-                                }
-                                append("\n=== INTERACTIONS ===\n")
-                                append("ID,ClientID,Method,Discussion,Price,Product,Response\n")
-                                interactions.forEach {
-                                    append("${it.id},${it.clientId},\"${it.contactMethod}\",\"${it.discussion}\",${it.priceOffered ?: 0.0},\"${it.productDiscussed ?: ""}\",\"${it.clientResponse}\"\n")
-                                }
-                            }
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "TrackDeals CRM Export")
-                                putExtra(Intent.EXTRA_TEXT, csvContent)
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Share CRM CSV Export"))
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Download, null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Export All Data as CSV", color = Color.White)
-                    }
-
                     // Clear Database
                     Button(
                         onClick = { showClearConfirm = true },
@@ -3211,6 +3175,8 @@ fun backupDatabase(context: Context, outputStream: java.io.OutputStream): Boolea
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        AppDatabase.closeAndResetInstance()
+
         val dbFile = context.getDatabasePath("track_deals_database")
         if (dbFile.exists()) {
             dbFile.inputStream().use { input ->
@@ -3292,14 +3258,17 @@ fun restoreDatabase(context: Context, inputStream: java.io.InputStream): Boolean
         }
 
         // 3. Flush live database WAL before closing to make sure main file is up to date
-        val db = AppDatabase.getDatabase(context)
         try {
+            val db = AppDatabase.getDatabase(context)
             db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        // 4. Backup the current live database files
+        // 4. Close database connection cleanly to release all file locks and complete WAL checkpoint
+        AppDatabase.closeAndResetInstance()
+
+        // 5. Backup the current live database files
         if (dbFile.exists()) {
             dbFile.inputStream().use { input ->
                 backupDbFile.outputStream().use { output ->
@@ -3329,9 +3298,6 @@ fun restoreDatabase(context: Context, inputStream: java.io.InputStream): Boolean
                 }
             }
         }
-
-        // 5. Close database connection and reset the instance
-        AppDatabase.closeAndResetInstance()
 
         // 6. Delete live database and support files
         if (walFile.exists()) walFile.delete()
@@ -3434,23 +3400,27 @@ fun ClientSelectionHeader(
                     val idIndex = cursor.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
                     val nameIndex = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
                     if (idIndex != -1 && nameIndex != -1) {
-                        val contactId = cursor.getString(idIndex)
                         name = cursor.getString(nameIndex)
 
-                        // Query phone number
-                        val phonesCursor = contentResolver.query(
-                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                            null,
-                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
-                            arrayOf(contactId),
-                            null
-                        )
-                        if (phonesCursor != null && phonesCursor.moveToFirst()) {
-                            val numberIndex = phonesCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
-                            if (numberIndex != -1) {
-                                phone = phonesCursor.getString(numberIndex)
+                        val hasPhoneIndex = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                        val hasPhone = if (hasPhoneIndex != -1) cursor.getString(hasPhoneIndex) else "0"
+
+                        if (hasPhone == "1") {
+                            val contactId = cursor.getString(idIndex)
+                            val phonesCursor = contentResolver.query(
+                                android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                null,
+                                android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                                arrayOf(contactId),
+                                null
+                            )
+                            if (phonesCursor != null && phonesCursor.moveToFirst()) {
+                                val numberIndex = phonesCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                                if (numberIndex != -1) {
+                                    phone = phonesCursor.getString(numberIndex)
+                                }
+                                phonesCursor.close()
                             }
-                            phonesCursor.close()
                         }
                     }
                     cursor.close()
@@ -3473,8 +3443,18 @@ fun ClientSelectionHeader(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ContactPicker", "Error picking contact", e)
-                Toast.makeText(context, "Error picking contact", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Error picking contact: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            contactPickerLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permission to read contacts is required to import contacts", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -3589,7 +3569,15 @@ fun ClientSelectionHeader(
 
                 IconButton(
                     onClick = {
-                        contactPickerLauncher.launch(null)
+                        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.READ_CONTACTS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (hasPermission) {
+                            contactPickerLauncher.launch(null)
+                        } else {
+                            permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+                        }
                     },
                     modifier = Modifier.size(32.dp)
                 ) {

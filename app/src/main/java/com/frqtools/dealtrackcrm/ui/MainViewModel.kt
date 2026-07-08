@@ -10,7 +10,7 @@ import com.frqtools.dealtrackcrm.reminder.ReminderScheduler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class MainViewModel(private val repository: AppRepository) : ViewModel() {
+class MainViewModel(private val context: Context, private val repository: AppRepository) : ViewModel() {
 
     // --- State Streams ---
     val clients: StateFlow<List<Client>> = repository.allClients
@@ -31,11 +31,15 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     init {
         viewModelScope.launch {
             val currentSettings = repository.getSettingsDirect()
-            if (!currentSettings.hasSeeded) {
+            val sharedPrefs = context.getSharedPreferences("crm_app_preferences", Context.MODE_PRIVATE)
+            val hasInitSeeded = sharedPrefs.getBoolean("has_initially_seeded", false)
+
+            if (!hasInitSeeded) {
                 val currentClients = repository.allClients.first()
                 if (currentClients.isEmpty()) {
                     seedSampleData()
                 }
+                sharedPrefs.edit().putBoolean("has_initially_seeded", true).apply()
                 repository.updateSettings(currentSettings.copy(hasSeeded = true))
             }
         }
@@ -344,11 +348,11 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     }
 }
 
-class ViewModelFactory(private val repository: AppRepository) : ViewModelProvider.Factory {
+class ViewModelFactory(private val context: Context, private val repository: AppRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(repository) as T
+            return MainViewModel(context, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
