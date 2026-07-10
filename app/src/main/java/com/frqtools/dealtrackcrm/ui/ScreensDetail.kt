@@ -194,11 +194,12 @@ fun ClientProfileScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
                     ) {
                         ProfileActionButton(icon = Icons.Default.Call, label = "Call", color = PrimaryBlue) {
-                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${client.phone}"))
+                            val dialedPhone = cleanPhoneForDialing(client.phone)
+                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialedPhone"))
                             context.startActivity(intent)
                         }
                         ProfileActionButton(icon = Icons.AutoMirrored.Filled.Chat, label = "WhatsApp", color = WonGreen) {
-                            val cleanPhone = client.phone.filter { it.isDigit() }
+                            val cleanPhone = cleanPhoneForWhatsApp(client.phone, settings.currency)
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$cleanPhone"))
                             context.startActivity(intent)
                         }
@@ -991,8 +992,8 @@ fun AddEditDealScreen(
                             Toast.makeText(context, "Enter a deal title", Toast.LENGTH_SHORT).show()
                             return@TextButton
                         }
-                        val price = offeredPriceStr.toDoubleOrNull() ?: 0.0
-                        val finalPrice = finalPriceStr.toDoubleOrNull() ?: price
+                        val price = cleanPriceInput(offeredPriceStr).toDoubleOrNull() ?: 0.0
+                        val finalPrice = cleanPriceInput(finalPriceStr).toDoubleOrNull() ?: price
 
                         val updated = Deal(
                             id = dealId ?: 0,
@@ -1259,8 +1260,8 @@ fun AddEditDealScreen(
                         Toast.makeText(context, "Enter a deal title", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    val price = offeredPriceStr.toDoubleOrNull() ?: 0.0
-                    val finalPrice = finalPriceStr.toDoubleOrNull() ?: price
+                    val price = cleanPriceInput(offeredPriceStr).toDoubleOrNull() ?: 0.0
+                    val finalPrice = cleanPriceInput(finalPriceStr).toDoubleOrNull() ?: price
 
                     val updated = Deal(
                         id = dealId ?: 0,
@@ -1405,7 +1406,7 @@ fun AddEditInteractionScreen(
                             dateTime = System.currentTimeMillis(),
                             contactMethod = contactMethod,
                             discussion = discussion.trim(),
-                            priceOffered = priceOfferedStr.toDoubleOrNull(),
+                            priceOffered = cleanPriceInput(priceOfferedStr).toDoubleOrNull(),
                             productDiscussed = productDiscussed.trim().ifEmpty { null },
                             clientResponse = clientResponse,
                             myNextStep = myNextStep.trim()
@@ -1676,7 +1677,7 @@ fun AddEditInteractionScreen(
                         dateTime = System.currentTimeMillis(),
                         contactMethod = contactMethod,
                         discussion = discussion.trim(),
-                        priceOffered = priceOfferedStr.toDoubleOrNull(),
+                        priceOffered = cleanPriceInput(priceOfferedStr).toDoubleOrNull(),
                         productDiscussed = productDiscussed.trim().ifEmpty { null },
                         clientResponse = clientResponse,
                         myNextStep = myNextStep.trim()
@@ -3180,6 +3181,9 @@ fun backupDatabase(context: Context, outputStream: java.io.OutputStream): Boolea
             e.printStackTrace()
         }
 
+        // Close the database cleanly before copying to avoid in-use file lock issues and corruption
+        AppDatabase.closeAndResetInstance()
+
         val dbFile = context.getDatabasePath("track_deals_database")
         val success = if (dbFile.exists()) {
             dbFile.inputStream().use { input ->
@@ -3192,9 +3196,10 @@ fun backupDatabase(context: Context, outputStream: java.io.OutputStream): Boolea
             false
         }
 
-        // Restore journal mode back to WAL for performance
+        // Restore journal mode back to WAL for performance by reopening database instance
         try {
-            db.openHelper.writableDatabase.query("PRAGMA journal_mode = WAL").close()
+            val dbNew = AppDatabase.getDatabase(context)
+            dbNew.openHelper.writableDatabase.query("PRAGMA journal_mode = WAL").close()
         } catch (e: Exception) {
             e.printStackTrace()
         }

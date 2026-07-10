@@ -1,16 +1,20 @@
 package com.frqtools.dealtrackcrm.data
 
+import android.content.Context
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
 import androidx.room.withTransaction
 
-class AppRepository(private val db: AppDatabase) {
-    private val clientDao = db.clientDao()
-    private val dealDao = db.dealDao()
-    private val interactionDao = db.interactionDao()
-    private val followUpDao = db.followUpDao()
-    private val appSettingsDao = db.appSettingsDao()
+class AppRepository(private val context: Context) {
+    private val db: AppDatabase
+        get() = AppDatabase.getDatabase(context)
+
+    private val clientDao get() = db.clientDao()
+    private val dealDao get() = db.dealDao()
+    private val interactionDao get() = db.interactionDao()
+    private val followUpDao get() = db.followUpDao()
+    private val appSettingsDao get() = db.appSettingsDao()
 
     // --- Clients ---
     val allClients: Flow<List<Client>> = clientDao.getAllClients()

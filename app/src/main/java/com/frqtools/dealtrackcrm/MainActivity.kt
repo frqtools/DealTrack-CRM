@@ -42,8 +42,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val db = AppDatabase.getDatabase(applicationContext)
-        val repository = AppRepository(db)
+        val repository = AppRepository(applicationContext)
         val viewModel: MainViewModel by viewModels { ViewModelFactory(applicationContext, repository) }
 
         setContent {

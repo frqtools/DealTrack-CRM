@@ -30,15 +30,17 @@
         </activity>
 
         <receiver
-            android:name="com.frqtools.dealtrackcrm.reminder.ReminderReceiver"
-            android:exported="true">
+            android:name="com.frqtools.dealtrackcrm.reminder.BootReceiver"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="com.frqtools.dealtrackcrm.reminder.ACTION_TRIGGER" />
-                <action android:name="com.frqtools.dealtrackcrm.reminder.ACTION_DONE" />
-                <action android:name="com.frqtools.dealtrackcrm.reminder.ACTION_SNOOZE" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name="com.frqtools.dealtrackcrm.reminder.ReminderReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

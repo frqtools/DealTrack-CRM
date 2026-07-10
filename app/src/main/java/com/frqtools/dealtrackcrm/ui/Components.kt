@@ -224,3 +224,59 @@ fun EmptyStateView(
         }
     }
 }
+
+// Sanitizes a phone number for direct dialing (preserves '+' if it starts with it, filters out other non-digits)
+fun cleanPhoneForDialing(phone: String): String {
+    val trimmed = phone.trim()
+    val hasPlus = trimmed.startsWith("+")
+    val digits = trimmed.filter { it.isDigit() }
+    return if (hasPlus) "+$digits" else digits
+}
+
+// Sanitizes a phone number for WhatsApp links (wa.me)
+// - Strips leading +
+// - Strips leading 00
+// - Converts local Pakistan number (starting with 0) to include international country code (92)
+// - Filters out all other non-digits (spaces, hyphens, parentheses, etc.)
+fun cleanPhoneForWhatsApp(phone: String, currency: String = "PKR"): String {
+    var trimmed = phone.trim()
+    
+    // If it starts with 00, treat it as + country code start
+    if (trimmed.startsWith("00")) {
+        trimmed = "+" + trimmed.substring(2)
+    }
+    
+    // If it starts with +, clean it and remove the + since wa.me expects digits only
+    if (trimmed.startsWith("+")) {
+        return trimmed.filter { it.isDigit() }
+    }
+    
+    val digitsOnly = trimmed.filter { it.isDigit() }
+    
+    // Pakistani local number starts with 0
+    if (digitsOnly.startsWith("0")) {
+        val withoutLeadingZero = digitsOnly.substring(1)
+        val countryCode = if (currency == "PKR") "92" else "92" // default to 92 for Pakistan/PKR
+        return "$countryCode$withoutLeadingZero"
+    }
+    
+    // If it's a 10-digit number without leading 0 and currency is PKR, prepend 92
+    if (digitsOnly.length == 10 && currency == "PKR") {
+        return "92$digitsOnly"
+    }
+    
+    return digitsOnly
+}
+
+// Cleans numeric string inputs (e.g., removing commas, currency symbols, and spaces) for parsing to double
+fun cleanPriceInput(input: String): String {
+    return input.replace(",", "")
+                .replace(" ", "")
+                .replace("$", "")
+                .replace("€", "")
+                .replace("£", "")
+                .replace("PKR", "")
+                .replace("pkr", "")
+                .trim()
+}
+

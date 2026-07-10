@@ -14,6 +14,7 @@ import com.frqtools.dealtrackcrm.data.AppDatabase
 import com.frqtools.dealtrackcrm.data.AppRepository
 import com.frqtools.dealtrackcrm.data.FollowUp
 import com.frqtools.dealtrackcrm.data.Interaction
+import com.frqtools.dealtrackcrm.ui.cleanPhoneForDialing
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -29,24 +30,8 @@ class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
-        val db = AppDatabase.getDatabase(context)
-        val repository = AppRepository(db)
+        val repository = AppRepository(context)
         val coroutineScope = CoroutineScope(Dispatchers.IO)
-
-        if (action == Intent.ACTION_BOOT_COMPLETED) {
-            coroutineScope.launch {
-                val followUps = repository.allFollowUps.firstOrNull() ?: emptyList()
-                val now = System.currentTimeMillis()
-                for (f in followUps) {
-                    if (!f.isDone && f.scheduledDateTime > now) {
-                        val client = repository.getClientByIdDirect(f.clientId)
-                        val clientName = client?.name ?: "Client"
-                        ReminderScheduler.schedule(context, f, clientName, client?.phone)
-                    }
-                }
-            }
-            return
-        }
 
         val followUpId = intent.getIntExtra(ReminderScheduler.EXTRA_FOLLOWUP_ID, -1)
         if (followUpId == -1) return
@@ -59,44 +44,54 @@ class ReminderReceiver : BroadcastReceiver() {
                 showNotification(context, followUpId, clientName, note, clientPhone)
             }
             ACTION_DONE -> {
+                val pendingResult = goAsync()
                 coroutineScope.launch {
-                    val followUp = repository.getFollowUpByIdDirect(followUpId)
-                    if (followUp != null) {
-                        val updated = followUp.copy(
-                            isDone = true,
-                            completedDateTime = System.currentTimeMillis()
-                        )
-                        repository.updateFollowUp(updated)
-
-                        // Log as interaction
-                        repository.insertInteraction(
-                            Interaction(
-                                clientId = followUp.clientId,
-                                dealId = followUp.dealId,
-                                dateTime = System.currentTimeMillis(),
-                                contactMethod = "Call",
-                                discussion = "Completed follow-up: ${followUp.note}",
-                                clientResponse = "Closed",
-                                myNextStep = ""
+                    try {
+                        val followUp = repository.getFollowUpByIdDirect(followUpId)
+                        if (followUp != null) {
+                            val updated = followUp.copy(
+                                isDone = true,
+                                completedDateTime = System.currentTimeMillis()
                             )
-                        )
+                            repository.updateFollowUp(updated)
+
+                            // Log as interaction
+                            repository.insertInteraction(
+                                Interaction(
+                                    clientId = followUp.clientId,
+                                    dealId = followUp.dealId,
+                                    dateTime = System.currentTimeMillis(),
+                                    contactMethod = "Call",
+                                    discussion = "Completed follow-up: ${followUp.note}",
+                                    clientResponse = "Closed",
+                                    myNextStep = ""
+                                )
+                            )
+                        }
+                    } finally {
+                        pendingResult.finish()
                     }
                 }
                 cancelNotification(context, followUpId)
             }
             ACTION_SNOOZE -> {
+                val pendingResult = goAsync()
                 coroutineScope.launch {
-                    val followUp = repository.getFollowUpByIdDirect(followUpId)
-                    val settings = repository.getSettingsDirect()
-                    if (followUp != null) {
-                        val snoozeMillis = settings.snoozeMinutes * 60 * 1000L
-                        val newTime = System.currentTimeMillis() + snoozeMillis
-                        val updated = followUp.copy(scheduledDateTime = newTime)
-                        repository.updateFollowUp(updated)
+                    try {
+                        val followUp = repository.getFollowUpByIdDirect(followUpId)
+                        val settings = repository.getSettingsDirect()
+                        if (followUp != null) {
+                            val snoozeMillis = settings.snoozeMinutes * 60 * 1000L
+                            val newTime = System.currentTimeMillis() + snoozeMillis
+                            val updated = followUp.copy(scheduledDateTime = newTime)
+                            repository.updateFollowUp(updated)
 
-                        val client = repository.getClientByIdDirect(followUp.clientId)
-                        val clientName = client?.name ?: "Client"
-                        ReminderScheduler.schedule(context, updated, clientName, client?.phone)
+                            val client = repository.getClientByIdDirect(followUp.clientId)
+                            val clientName = client?.name ?: "Client"
+                            ReminderScheduler.schedule(context, updated, clientName, client?.phone)
+                        }
+                    } finally {
+                        pendingResult.finish()
                     }
                 }
                 cancelNotification(context, followUpId)
@@ -163,7 +158,8 @@ class ReminderReceiver : BroadcastReceiver() {
             .addAction(android.R.drawable.ic_lock_idle_alarm, "Snooze", snoozePI)
 
         if (!clientPhone.isNullOrBlank()) {
-            val callIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$clientPhone"))
+            val dialedPhone = cleanPhoneForDialing(clientPhone)
+            val callIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialedPhone"))
             val callPI = PendingIntent.getActivity(
                 context,
                 followUpId * 10 + 4,
