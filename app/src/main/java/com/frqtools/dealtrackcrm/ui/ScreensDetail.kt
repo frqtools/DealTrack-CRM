@@ -132,7 +132,7 @@ fun ClientProfileScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LostRed)
-                ) { Text("Delete", color = Color.White) }
+                ) { Text("Delete", color = OnLostRed) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
@@ -333,6 +333,7 @@ fun DealsTabContent(
     navController: NavController,
     clientId: Int
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var dealToDelete by remember { mutableStateOf<Deal?>(null) }
 
     if (dealToDelete != null) {
@@ -344,13 +345,13 @@ fun DealsTabContent(
                 Button(
                     onClick = {
                         dealToDelete?.let { deal ->
-                            viewModel.deleteDeal(deal) {}
+                            viewModel.deleteDeal(context, deal) {}
                         }
                         dealToDelete = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LostRed)
                 ) {
-                    Text("Delete", color = Color.White)
+                    Text("Delete", color = OnLostRed)
                 }
             },
             dismissButton = {
@@ -412,7 +413,7 @@ fun InteractionsTabContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LostRed)
                 ) {
-                    Text("Delete", color = Color.White)
+                    Text("Delete", color = OnLostRed)
                 }
             },
             dismissButton = {
@@ -474,7 +475,7 @@ fun FollowUpsTabContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LostRed)
                 ) {
-                    Text("Delete", color = Color.White)
+                    Text("Delete", color = OnLostRed)
                 }
             },
             dismissButton = {
@@ -881,7 +882,7 @@ fun AddEditDealScreen(
                         stage = "Won"
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = WonGreen)
-                ) { Text("Confirm Win", color = Color.White) }
+                ) { Text("Confirm Win", color = OnWonGreen) }
             },
             dismissButton = {
                 TextButton(onClick = { showWonDialog = false }) { Text("Cancel") }
@@ -931,7 +932,7 @@ fun AddEditDealScreen(
                         stage = "Lost"
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LostRed)
-                ) { Text("Mark Lost", color = Color.White) }
+                ) { Text("Mark Lost", color = OnLostRed) }
             },
             dismissButton = {
                 TextButton(onClick = { showLostDialog = false }) { Text("Cancel") }
@@ -964,7 +965,7 @@ fun AddEditDealScreen(
                                         onClick = {
                                             val dl = deals.find { it.id == dealId }
                                             if (dl != null) {
-                                                viewModel.deleteDeal(dl) {
+                                                viewModel.deleteDeal(context, dl) {
                                                     Toast.makeText(context, "Deal deleted", Toast.LENGTH_SHORT).show()
                                                     navController.navigateUp()
                                                 }
@@ -972,7 +973,7 @@ fun AddEditDealScreen(
                                             showDeleteConfirm = false
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = LostRed)
-                                    ) { Text("Delete", color = Color.White) }
+                                    ) { Text("Delete", color = OnLostRed) }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
@@ -1285,7 +1286,7 @@ fun AddEditDealScreen(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(if (isEdit) "Update Deal" else "Create Deal", fontWeight = FontWeight.Bold, color = Color.White)
+                Text(if (isEdit) "Update Deal" else "Create Deal", fontWeight = FontWeight.Bold, color = OnPrimaryBlue)
             }
         }
     }
@@ -1378,7 +1379,7 @@ fun AddEditInteractionScreen(
                                             showDeleteConfirm = false
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = LostRed)
-                                    ) { Text("Delete", color = Color.White) }
+                                    ) { Text("Delete", color = OnLostRed) }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
@@ -1691,7 +1692,7 @@ fun AddEditInteractionScreen(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(if (isEdit) "Update Log" else "Log Interaction", fontWeight = FontWeight.Bold, color = Color.White)
+                Text(if (isEdit) "Update Log" else "Log Interaction", fontWeight = FontWeight.Bold, color = OnPrimaryBlue)
             }
         }
     }
@@ -2146,9 +2147,9 @@ fun FollowUpCardRow(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             modifier = Modifier.height(32.dp)
                         ) {
-                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Check, null, tint = OnWonGreen, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Done", fontSize = 11.sp, color = Color.White)
+                            Text("Done", fontSize = 11.sp, color = OnWonGreen)
                         }
                     }
                 }
@@ -2256,7 +2257,7 @@ fun AddEditFollowUpScreen(
                                             showDeleteConfirm = false
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = LostRed)
-                                    ) { Text("Delete", color = Color.White) }
+                                    ) { Text("Delete", color = OnLostRed) }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
@@ -2494,7 +2495,7 @@ fun AddEditFollowUpScreen(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(if (isEdit) "Update Reminder" else "Schedule Reminder", fontWeight = FontWeight.Bold, color = Color.White)
+                Text(if (isEdit) "Update Reminder" else "Schedule Reminder", fontWeight = FontWeight.Bold, color = OnPrimaryBlue)
             }
         }
     }
@@ -2609,7 +2610,7 @@ fun SettingsScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = LostRed),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Clear Completely (Blank Database)", color = Color.White)
+                        Text("Clear Completely (Blank Database)", color = OnLostRed)
                     }
 
                     // Reset with Demo Data
@@ -2623,7 +2624,7 @@ fun SettingsScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Reset with Demo Data", color = Color.White)
+                        Text("Reset with Demo Data", color = OnPrimaryBlue)
                     }
                 }
             },
@@ -2673,9 +2674,9 @@ fun SettingsScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Edit, null, tint = OnPrimaryBlue, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Edit Profile Details", color = Color.White)
+                            Text("Edit Profile Details", color = OnPrimaryBlue)
                         }
                     } else {
                         OutlinedTextField(
@@ -2724,7 +2725,7 @@ fun SettingsScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = WonGreen),
                                 shape = RoundedCornerShape(8.dp)
-                            ) { Text("Save", color = Color.White) }
+                            ) { Text("Save", color = OnWonGreen) }
                             OutlinedButton(
                                 onClick = { isEditingProfile = false },
                                 shape = RoundedCornerShape(8.dp)
@@ -2856,9 +2857,9 @@ fun SettingsScreen(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Save, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Save, null, tint = OnWonGreen, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export Backup", color = Color.White, style = AppTypography.labelMedium)
+                            Text("Export Backup", color = OnWonGreen, style = AppTypography.labelMedium)
                         }
 
                         Button(
@@ -2869,9 +2870,9 @@ fun SettingsScreen(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.FileOpen, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.FileOpen, null, tint = OnPrimaryBlue, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Import Backup", color = Color.White, style = AppTypography.labelMedium)
+                            Text("Import Backup", color = OnPrimaryBlue, style = AppTypography.labelMedium)
                         }
                     }
                 }
@@ -3108,7 +3109,7 @@ fun CustomFieldSection(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = WonGreen)
-                    ) { Text("Add", color = Color.White) }
+                    ) { Text("Add", color = OnWonGreen) }
                 },
                 dismissButton = {
                     TextButton(onClick = { showAddDialog = false }) { Text("Cancel") }
@@ -3145,7 +3146,7 @@ fun CustomFieldSection(
                                 showEditDialogItemIndex = null
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = LostRed)
-                        ) { Text("Delete", color = Color.White) }
+                        ) { Text("Delete", color = OnLostRed) }
 
                         // Save Button
                         Button(
@@ -3156,7 +3157,7 @@ fun CustomFieldSection(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = WonGreen)
-                        ) { Text("Save", color = Color.White) }
+                        ) { Text("Save", color = OnWonGreen) }
                     }
                 },
                 dismissButton = {
@@ -3170,15 +3171,17 @@ fun CustomFieldSection(
 fun backupDatabase(context: Context, outputStream: java.io.OutputStream): Boolean {
     return try {
         val db = AppDatabase.getDatabase(context)
+        
+        // Temporarily change journal mode to DELETE to merge the WAL into the main db file
         try {
             db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
+            db.openHelper.writableDatabase.query("PRAGMA journal_mode = DELETE").close()
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        AppDatabase.closeAndResetInstance()
 
         val dbFile = context.getDatabasePath("track_deals_database")
-        if (dbFile.exists()) {
+        val success = if (dbFile.exists()) {
             dbFile.inputStream().use { input ->
                 outputStream.use { output ->
                     input.copyTo(output)
@@ -3188,6 +3191,15 @@ fun backupDatabase(context: Context, outputStream: java.io.OutputStream): Boolea
         } else {
             false
         }
+
+        // Restore journal mode back to WAL for performance
+        try {
+            db.openHelper.writableDatabase.query("PRAGMA journal_mode = WAL").close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        success
     } catch (e: Exception) {
         e.printStackTrace()
         false
@@ -3205,26 +3217,28 @@ fun isValidSqliteFile(file: File): Boolean {
     } catch (e: Exception) {
         return false
     }
-    val expected = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
+    
+    val expected = byteArrayOf(
+        0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x20, 0x66, 
+        0x6f, 0x72, 0x6d, 0x61, 0x74, 0x20, 0x33, 0x00
+    ) // "SQLite format 3\u0000"
     if (!header.contentEquals(expected)) return false
 
-    // Try opening as an SQLite database to ensure it's not corrupted/empty/invalid
+    // Try opening as an SQLite database to ensure it's not corrupted and contains our clients table
     return try {
         android.database.sqlite.SQLiteDatabase.openDatabase(
             file.absolutePath,
             null,
-            android.database.sqlite.SQLiteDatabase.OPEN_READONLY
+            android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
         ).use { db ->
-            db.rawQuery("PRAGMA quick_check", null).use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val result = cursor.getString(0)
-                    result == "ok"
-                } else {
-                    false
-                }
+            var hasClientsTable = false
+            db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='clients'", null).use { cursor ->
+                hasClientsTable = cursor.moveToFirst()
             }
+            hasClientsTable
         }
     } catch (e: Exception) {
+        e.printStackTrace()
         false
     }
 }
@@ -3523,7 +3537,7 @@ fun ClientSelectionHeader(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
                 ) {
-                    Text("Add & Select", color = Color.White)
+                    Text("Add & Select", color = OnPrimaryBlue)
                 }
             },
             dismissButton = {

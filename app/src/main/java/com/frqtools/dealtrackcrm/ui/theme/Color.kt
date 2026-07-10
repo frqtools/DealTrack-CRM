@@ -119,6 +119,27 @@ val ProposalPurpleContainer: Color
     @Composable
     get() = if (isSystemInDarkTheme()) Color(0xFF581C87) else Color(0xFFF3E8FF)
 
+// --- Theme-Aware Button Content Colors to resolve Dark Mode Contrast ---
+val OnPrimaryBlue: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.onPrimary
+
+val OnWonGreen: Color
+    @Composable
+    get() = if (isSystemInDarkTheme()) Color(0xFF14532D) else Color.White
+
+val OnLostRed: Color
+    @Composable
+    get() = if (isSystemInDarkTheme()) Color(0xFF7F1D1D) else Color.White
+
+val OnWarningAmber: Color
+    @Composable
+    get() = if (isSystemInDarkTheme()) Color(0xFF78350F) else Color.White
+
+val OnProposalPurple: Color
+    @Composable
+    get() = if (isSystemInDarkTheme()) Color(0xFF581C87) else Color.White
+
 // Selected Avatar Colors
 val AvatarColors = listOf(
     Color(0xFF1565C0), // Blue

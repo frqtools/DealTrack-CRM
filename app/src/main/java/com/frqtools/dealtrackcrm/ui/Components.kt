@@ -219,7 +219,7 @@ fun EmptyStateView(
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.height(48.dp)
             ) {
-                Text(buttonText, style = AppTypography.labelLarge, color = Color.White)
+                Text(buttonText, style = AppTypography.labelLarge, color = OnPrimaryBlue)
             }
         }
     }

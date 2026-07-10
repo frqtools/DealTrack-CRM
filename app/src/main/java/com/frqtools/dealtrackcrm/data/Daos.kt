@@ -82,6 +82,9 @@ interface InteractionDao {
 
     @Query("DELETE FROM interactions WHERE clientId = :clientId")
     suspend fun deleteInteractionsByClientId(clientId: Int)
+
+    @Query("DELETE FROM interactions WHERE dealId = :dealId")
+    suspend fun deleteInteractionsByDealId(dealId: Int)
 }
 
 @Dao
@@ -115,6 +118,12 @@ interface FollowUpDao {
 
     @Query("SELECT * FROM follow_ups WHERE clientId = :clientId")
     suspend fun getFollowUpsForClientDirect(clientId: Int): List<FollowUp>
+
+    @Query("SELECT * FROM follow_ups WHERE dealId = :dealId")
+    suspend fun getFollowUpsForDealDirect(dealId: Int): List<FollowUp>
+
+    @Query("DELETE FROM follow_ups WHERE dealId = :dealId")
+    suspend fun deleteFollowUpsByDealId(dealId: Int)
 }
 
 @Dao

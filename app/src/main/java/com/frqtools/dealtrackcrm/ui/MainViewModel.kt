@@ -83,9 +83,17 @@ class MainViewModel(private val context: Context, private val repository: AppRep
         }
     }
 
-    fun deleteDeal(deal: Deal, onComplete: () -> Unit = {}) {
+    fun deleteDeal(context: Context, deal: Deal, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            repository.deleteDeal(deal)
+            try {
+                val followUps = repository.getFollowUpsForDealDirect(deal.id)
+                followUps.forEach { f ->
+                    ReminderScheduler.cancel(context, f.id)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            repository.deleteDealCascade(deal)
             onComplete()
         }
     }

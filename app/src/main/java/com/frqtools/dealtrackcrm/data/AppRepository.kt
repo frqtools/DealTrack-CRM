@@ -42,6 +42,16 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun updateDeal(deal: Deal) = dealDao.updateDeal(deal)
     suspend fun deleteDeal(deal: Deal) = dealDao.deleteDeal(deal)
 
+    suspend fun getFollowUpsForDealDirect(dealId: Int): List<FollowUp> = followUpDao.getFollowUpsForDealDirect(dealId)
+
+    suspend fun deleteDealCascade(deal: Deal) {
+        db.withTransaction {
+            interactionDao.deleteInteractionsByDealId(deal.id)
+            followUpDao.deleteFollowUpsByDealId(deal.id)
+            dealDao.deleteDeal(deal)
+        }
+    }
+
     // --- Interactions ---
     val allInteractions: Flow<List<Interaction>> = interactionDao.getAllInteractions()
     fun getInteractionsForClient(clientId: Int): Flow<List<Interaction>> = interactionDao.getInteractionsForClient(clientId)

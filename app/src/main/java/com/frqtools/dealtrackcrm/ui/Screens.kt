@@ -165,7 +165,7 @@ fun HomeScreen(
                         val initials = if (settings.ownerName.length >= 2) settings.ownerName.substring(0, 2).uppercase(Locale.getDefault()) else "DT"
                         Text(
                             text = initials,
-                            color = Color.White,
+                            color = OnPrimaryBlue,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )
@@ -180,7 +180,7 @@ fun HomeScreen(
                 ExtendedFloatingActionButton(
                     onClick = { showQuickMenu = !showQuickMenu },
                     containerColor = PrimaryBlue,
-                    contentColor = Color.White,
+                    contentColor = OnPrimaryBlue,
                     shape = RoundedCornerShape(16.dp),
                     icon = {
                         Icon(
@@ -317,7 +317,7 @@ fun HomeScreen(
                                 .clip(CircleShape)
                                 .background(LostRed)
                         ) {
-                            Text("!", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                            Text("!", color = OnLostRed, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -854,7 +854,7 @@ fun ClientCard(
                     ) {
                         Text(
                             text = "Call Today",
-                            color = Color.White,
+                            color = OnLostRed,
                             style = AppTypography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -1181,7 +1181,7 @@ fun AddEditClientScreen(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(if (isEdit) "Update Client Info" else "Save Client", fontWeight = FontWeight.Bold, color = Color.White)
+                Text(if (isEdit) "Update Client Info" else "Save Client", fontWeight = FontWeight.Bold, color = OnPrimaryBlue)
             }
         }
     }
