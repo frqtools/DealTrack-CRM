@@ -50,11 +50,12 @@ class MainViewModel(private val context: Context, private val repository: AppRep
     // Clients
     fun saveClient(client: Client, onComplete: (Long) -> Unit = {}) {
         viewModelScope.launch {
-            val id = if (client.id == 0) {
-                repository.insertClient(client)
+            val sanitizedClient = client.copy(phone = client.phone.replace(" ", ""))
+            val id = if (sanitizedClient.id == 0) {
+                repository.insertClient(sanitizedClient)
             } else {
-                repository.updateClient(client)
-                client.id.toLong()
+                repository.updateClient(sanitizedClient)
+                sanitizedClient.id.toLong()
             }
             onComplete(id)
         }
@@ -214,7 +215,7 @@ class MainViewModel(private val context: Context, private val repository: AppRep
         val client1Id = repository.insertClient(
             Client(
                 name = "Ahmed Ali",
-                phone = "+92 300 1234567",
+                phone = "+923001234567",
                 companyName = "Siddique Fabrics",
                 city = "Faisalabad",
                 clientType = "Wholesaler",
@@ -226,7 +227,7 @@ class MainViewModel(private val context: Context, private val repository: AppRep
         val client2Id = repository.insertClient(
             Client(
                 name = "Fatima Shah",
-                phone = "+92 321 7654321",
+                phone = "+923217654321",
                 companyName = "Elegant Boutique",
                 city = "Lahore",
                 clientType = "Retailer",
@@ -238,7 +239,7 @@ class MainViewModel(private val context: Context, private val repository: AppRep
         val client3Id = repository.insertClient(
             Client(
                 name = "Kamran Khan",
-                phone = "+92 333 9876543",
+                phone = "+923339876543",
                 companyName = "Khyber Traders",
                 city = "Peshawar",
                 clientType = "Individual",

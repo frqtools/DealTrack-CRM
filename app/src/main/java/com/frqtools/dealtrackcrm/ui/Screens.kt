@@ -1006,7 +1006,7 @@ fun AddEditClientScreen(
                             val updated = Client(
                                 id = clientId ?: 0,
                                 name = name.trim(),
-                                phone = phone.trim(),
+                                phone = phone.replace(" ", "").trim(),
                                 companyName = companyName.trim(),
                                 city = city.trim(),
                                 clientType = clientType,
@@ -1172,7 +1172,7 @@ fun AddEditClientScreen(
                         val updated = Client(
                             id = clientId ?: 0,
                             name = name.trim(),
-                            phone = phone.trim(),
+                            phone = phone.replace(" ", "").trim(),
                             companyName = companyName.trim(),
                             city = city.trim(),
                             clientType = clientType,

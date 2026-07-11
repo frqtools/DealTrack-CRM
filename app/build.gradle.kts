@@ -7,6 +7,10 @@ plugins {
   alias(libs.plugins.secrets)
 }
 
+ksp {
+  arg("room.schemaLocation", "${projectDir}/schemas")
+}
+
 android {
   namespace = "com.frqtools.dealtrackcrm"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -107,6 +111,7 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.room.testing)
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)

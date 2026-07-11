@@ -3574,7 +3574,7 @@ fun ClientSelectionHeader(
                 if (name.isNotEmpty()) {
                     val newClient = Client(
                         name = name,
-                        phone = phone,
+                        phone = phone.replace(" ", ""),
                         clientType = "Prospect",
                         city = "",
                         companyName = "",
@@ -3652,7 +3652,7 @@ fun ClientSelectionHeader(
                         } else {
                             val newClient = Client(
                                 name = quickClientName.trim(),
-                                phone = quickClientPhone.trim(),
+                                phone = quickClientPhone.replace(" ", "").trim(),
                                 companyName = quickClientCompany.trim(),
                                 clientType = "Prospect"
                             )

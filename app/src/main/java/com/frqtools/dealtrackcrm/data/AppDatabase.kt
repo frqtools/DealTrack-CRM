@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         AppSettings::class
     ],
     version = 6,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun clientDao(): ClientDao
@@ -119,6 +119,39 @@ abstract class AppDatabase : RoomDatabase() {
                     throw ex
                 }
             }
+
+            if (start == 5 && end == 6) {
+                try {
+                    // Migrate follow_ups table to support notificationButtonType, foreign keys to deals, and indices
+                    db.execSQL("""
+                        CREATE TABLE IF NOT EXISTS `follow_ups_new` (
+                            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            `clientId` INTEGER NOT NULL,
+                            `dealId` INTEGER,
+                            `scheduledDateTime` INTEGER NOT NULL,
+                            `note` TEXT NOT NULL,
+                            `priority` TEXT NOT NULL,
+                            `isDone` INTEGER NOT NULL,
+                            `completedDateTime` INTEGER,
+                            `alarmId` INTEGER NOT NULL,
+                            `notificationButtonType` TEXT NOT NULL DEFAULT 'Call',
+                            FOREIGN KEY(`clientId`) REFERENCES `clients`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                            FOREIGN KEY(`dealId`) REFERENCES `deals`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                        )
+                    """.trimIndent())
+                    db.execSQL("""
+                        INSERT INTO `follow_ups_new` (`id`, `clientId`, `dealId`, `scheduledDateTime`, `note`, `priority`, `isDone`, `completedDateTime`, `alarmId`)
+                        SELECT `id`, `clientId`, `dealId`, `scheduledDateTime`, `note`, `priority`, `isDone`, `completedDateTime`, `alarmId` FROM `follow_ups`
+                    """.trimIndent())
+                    db.execSQL("DROP TABLE `follow_ups`")
+                    db.execSQL("ALTER TABLE `follow_ups_new` RENAME TO `follow_ups`")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_follow_ups_clientId` ON `follow_ups` (`clientId`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_follow_ups_dealId` ON `follow_ups` (`dealId`)")
+                } catch (ex: Exception) {
+                    ex.printStackTrace()
+                    throw ex
+                }
+            }
         }
     }
 
@@ -201,7 +234,8 @@ abstract class AppDatabase : RoomDatabase() {
                     BackupMigration(context.applicationContext, 1, 2),
                     BackupMigration(context.applicationContext, 2, 3),
                     BackupMigration(context.applicationContext, 3, 4),
-                    BackupMigration(context.applicationContext, 4, 5)
+                    BackupMigration(context.applicationContext, 4, 5),
+                    BackupMigration(context.applicationContext, 5, 6)
                 )
                 .fallbackToDestructiveMigration(true) // Graceful fallback that won't crash the app, safe because of our auto-backup
                 .build()
