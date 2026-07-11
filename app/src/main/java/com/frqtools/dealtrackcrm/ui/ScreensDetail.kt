@@ -523,7 +523,8 @@ fun FollowUpsTabContent(
 @Composable
 fun DealListScreen(
     navController: NavController,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onMenuClick: () -> Unit
 ) {
     val deals by viewModel.deals.collectAsStateWithLifecycle()
     val clients by viewModel.clients.collectAsStateWithLifecycle()
@@ -547,7 +548,12 @@ fun DealListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Deals Tracker", fontWeight = FontWeight.Bold) },
+                title = { Text("Deals Tracker", fontWeight = FontWeight.Bold, color = OnSurfaceText, style = AppTypography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = PrimaryBlue)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         },
@@ -1808,7 +1814,8 @@ fun InteractionCardRow(
 @Composable
 fun FollowUpListScreen(
     navController: NavController,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onMenuClick: () -> Unit
 ) {
     val context = LocalContext.current
     val followUps by viewModel.followUps.collectAsStateWithLifecycle()
@@ -1853,7 +1860,12 @@ fun FollowUpListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Follow-Ups Schedule", fontWeight = FontWeight.Bold) },
+                title = { Text("Follow-Ups Schedule", fontWeight = FontWeight.Bold, color = OnSurfaceText, style = AppTypography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = PrimaryBlue)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         },
@@ -2509,7 +2521,8 @@ fun AddEditFollowUpScreen(
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onMenuClick: () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -2643,7 +2656,12 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings & Profile", fontWeight = FontWeight.Bold) },
+                title = { Text("Settings & Profile", fontWeight = FontWeight.Bold, color = OnSurfaceText, style = AppTypography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = PrimaryBlue)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         }

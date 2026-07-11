@@ -54,6 +54,8 @@ import java.util.*
 
 // Unified UI navigation mapping
 object Routes {
+    const val SPLASH = "splash"
+    const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val CLIENTS = "clients"
     const val ADD_EDIT_CLIENT = "add_edit_client?clientId={clientId}"
@@ -74,7 +76,8 @@ object Routes {
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onMenuClick: () -> Unit
 ) {
     val context = LocalContext.current
     val clients by viewModel.clients.collectAsStateWithLifecycle()
@@ -142,7 +145,8 @@ fun HomeScreen(
                             .padding(start = 12.dp)
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(PrimaryBlue.copy(alpha = 0.1f)),
+                            .background(PrimaryBlue.copy(alpha = 0.1f))
+                            .clickable { onMenuClick() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -654,7 +658,8 @@ fun formatTimeAgo(time: Long): String {
 @Composable
 fun ClientListScreen(
     navController: NavController,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onMenuClick: () -> Unit
 ) {
     val clients by viewModel.clients.collectAsStateWithLifecycle()
     val deals by viewModel.deals.collectAsStateWithLifecycle()
@@ -682,7 +687,12 @@ fun ClientListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Clients", fontWeight = FontWeight.Bold) },
+                title = { Text("Clients", fontWeight = FontWeight.Bold, color = OnSurfaceText, style = AppTypography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = PrimaryBlue)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBg)
             )
         },
