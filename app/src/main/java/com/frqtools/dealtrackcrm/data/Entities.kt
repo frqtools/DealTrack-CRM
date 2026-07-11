@@ -79,9 +79,15 @@ data class Interaction(
             parentColumns = ["id"],
             childColumns = ["clientId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Deal::class,
+            parentColumns = ["id"],
+            childColumns = ["dealId"],
+            onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["clientId"])]
+    indices = [Index(value = ["clientId"]), Index(value = ["dealId"])]
 )
 data class FollowUp(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -92,7 +98,8 @@ data class FollowUp(
     val priority: String = "Normal", // "Normal", "Important", "Urgent"
     val isDone: Boolean = false,
     val completedDateTime: Long? = null,
-    val alarmId: Int = 0
+    val alarmId: Int = 0,
+    val notificationButtonType: String = "Call" // "Call", "WhatsApp"
 )
 
 @Entity(tableName = "app_settings")

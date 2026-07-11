@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,6 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -68,6 +73,15 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
+                // Determine if bottom navigation should be visible (only for top level tabs)
+                val topLevelRoutes = listOf(
+                    Routes.HOME,
+                    Routes.CLIENTS,
+                    Routes.DEALS,
+                    Routes.FOLLOW_UPS,
+                    Routes.SETTINGS
+                )
+
                 // Request POST_NOTIFICATIONS on Android 13+ on first launch
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
@@ -86,208 +100,205 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Determine if bottom navigation should be visible (only for top level tabs)
-                val topLevelRoutes = listOf(
-                    Routes.HOME,
-                    Routes.CLIENTS,
-                    Routes.DEALS,
-                    Routes.FOLLOW_UPS,
-                    Routes.SETTINGS
-                )
                 val isBottomBarVisible = currentRoute in topLevelRoutes
+
+                // Close drawer on back press if open
+                if (drawerState.isOpen) {
+                    BackHandler {
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                }
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
                     gesturesEnabled = currentRoute in topLevelRoutes,
                     drawerContent = {
-                        if (currentRoute in topLevelRoutes) {
-                            val settingsState by viewModel.settings.collectAsStateWithLifecycle()
-                            ModalDrawerSheet(
-                                drawerContainerColor = MaterialTheme.colorScheme.surface,
-                                drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-                                modifier = Modifier.width(310.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(PrimaryBlue, PrimaryBlue.copy(alpha = 0.8f))
-                                            )
+                        val settingsState by viewModel.settings.collectAsStateWithLifecycle()
+                        ModalDrawerSheet(
+                            drawerContainerColor = MaterialTheme.colorScheme.surface,
+                            drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+                            modifier = Modifier.width(310.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(PrimaryBlue, PrimaryBlue.copy(alpha = 0.8f))
                                         )
-                                        .padding(horizontal = 20.dp, vertical = 24.dp)
-                                ) {
-                                    Column {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(54.dp)
-                                                    .clip(CircleShape)
-                                                    .border(2.dp, Color.White, CircleShape)
-                                                    .background(Color.White.copy(alpha = 0.2f))
-                                            ) {
-                                                Image(
-                                                    painter = painterResource(id = R.drawable.img_dealtrack_logo),
-                                                    contentDescription = "App Logo",
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(16.dp))
-                                            Column {
-                                                Text(
-                                                    text = settingsState.businessName,
-                                                    color = Color.White,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    fontSize = 18.sp
-                                                )
-                                                Text(
-                                                    text = settingsState.ownerName,
-                                                    color = Color.White.copy(alpha = 0.85f),
-                                                    fontWeight = FontWeight.Medium,
-                                                    fontSize = 14.sp
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            text = "Your Professional Deal Partner",
-                                            color = Color.White.copy(alpha = 0.75f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 0.5.sp
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                NavigationDrawerItem(
-                                    label = { Text("Settings & Profile", fontWeight = FontWeight.Bold) },
-                                    selected = currentRoute == Routes.SETTINGS,
-                                    onClick = {
-                                        coroutineScope.launch { drawerState.close() }
-                                        navController.navigate(Routes.SETTINGS) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings", tint = PrimaryBlue) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    colors = NavigationDrawerItemDefaults.colors(
-                                        selectedContainerColor = PrimaryContainer,
-                                        selectedTextColor = PrimaryBlue,
-                                        selectedIconColor = PrimaryBlue,
-                                        unselectedTextColor = OnSurfaceVariantText,
-                                        unselectedIconColor = OnSurfaceVariantText
                                     )
-                                )
-
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = OutlineColor.copy(alpha = 0.3f))
-
-                                Text(
-                                    text = "App & Community",
-                                    style = AppTypography.bodySmall.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp),
-                                    color = OnSurfaceVariantText,
-                                    modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 8.dp)
-                                )
-
-                                NavigationDrawerItem(
-                                    label = { Text("Share App", fontWeight = FontWeight.Bold) },
-                                    selected = false,
-                                    onClick = {
-                                        coroutineScope.launch { drawerState.close() }
-                                        val shareText = """
-                                            📈 *Streamline your deals with DealTrack CRM!*
-                                            
-                                            Keep your business running flawlessly with the ultimate offline-first CRM companion.
-                                            • 👥 Manage clients in a secure offline vault
-                                            • 🤝 Trace negotiations and log interaction history
-                                            • 🔔 Set smart alarm reminders for follow-ups
-                                            
-                                            Download DealTrack CRM today and close more sales!
-                                            🔗 Download App: https://play.google.com/store/apps/details?id=com.frqtools.dealtrackcrm
-                                        """.trimIndent()
-                                        
-                                        val sendIntent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            putExtra(Intent.EXTRA_TEXT, shareText)
-                                            type = "text/plain"
+                                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                            ) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(54.dp)
+                                                .clip(CircleShape)
+                                                .border(2.dp, Color.White, CircleShape)
+                                                .background(Color.White.copy(alpha = 0.2f))
+                                        ) {
+                                            Image(
+                                                painter = painterResource(id = R.drawable.img_dealtrack_logo),
+                                                contentDescription = "App Logo",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
                                         }
-                                        val shareIntent = Intent.createChooser(sendIntent, "Share DealTrack CRM via")
-                                        context.startActivity(shareIntent)
-                                    },
-                                    icon = { Icon(Icons.Default.Share, contentDescription = "Share", tint = PrimaryBlue) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
-                                )
-
-                                NavigationDrawerItem(
-                                    label = { Text("Rate Us", fontWeight = FontWeight.Bold) },
-                                    selected = false,
-                                    onClick = {
-                                        coroutineScope.launch { drawerState.close() }
-                                        try {
-                                            val rateIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.frqtools.dealtrackcrm")).apply {
-                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET)
-                                            }
-                                            context.startActivity(rateIntent)
-                                        } catch (e: Exception) {
-                                            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.frqtools.dealtrackcrm"))
-                                            context.startActivity(webIntent)
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column {
+                                            Text(
+                                                text = settingsState.businessName,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 18.sp
+                                            )
+                                            Text(
+                                                text = settingsState.ownerName,
+                                                color = Color.White.copy(alpha = 0.85f),
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 14.sp
+                                            )
                                         }
-                                    },
-                                    icon = { Icon(Icons.Default.Star, contentDescription = "Rate Us", tint = PrimaryBlue) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
-                                )
-
-                                NavigationDrawerItem(
-                                    label = { Text("Check for Updates", fontWeight = FontWeight.Bold) },
-                                    selected = false,
-                                    onClick = {
-                                        coroutineScope.launch { drawerState.close() }
-                                        val updateIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.frqtools.dealtrackcrm"))
-                                        context.startActivity(updateIntent)
-                                    },
-                                    icon = { Icon(Icons.Default.SystemUpdate, contentDescription = "Check for Update", tint = PrimaryBlue) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
-                                )
-
-                                NavigationDrawerItem(
-                                    label = { Text("More Useful Apps", fontWeight = FontWeight.Bold) },
-                                    selected = false,
-                                    onClick = {
-                                        coroutineScope.launch { drawerState.close() }
-                                        val moreIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/dev?id=5671242375404230146"))
-                                        context.startActivity(moreIntent)
-                                    },
-                                    icon = { Icon(Icons.Default.Apps, contentDescription = "More Apps", tint = PrimaryBlue) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
-                                )
-
-                                NavigationDrawerItem(
-                                    label = { Text("WhatsApp Support", fontWeight = FontWeight.Bold) },
-                                    selected = false,
-                                    onClick = {
-                                        coroutineScope.launch { drawerState.close() }
-                                        try {
-                                            val supportText = "Hello DealTrack CRM Support team, I need assistance with the app."
-                                            val waUrl = "https://wa.me/923252604441?text=${Uri.encode(supportText)}"
-                                            val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(waUrl))
-                                            context.startActivity(waIntent)
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "WhatsApp support number: +923252604441", Toast.LENGTH_LONG).show()
-                                        }
-                                    },
-                                    icon = { Icon(Icons.Default.Chat, contentDescription = "WhatsApp Support", tint = PrimaryBlue) },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
-                                )
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Your Professional Deal Partner",
+                                        color = Color.White.copy(alpha = 0.75f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            NavigationDrawerItem(
+                                label = { Text("Settings & Profile", fontWeight = FontWeight.Bold) },
+                                selected = currentRoute == Routes.SETTINGS,
+                                onClick = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    navController.navigate(Routes.SETTINGS) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = { Icon(Icons.Default.Settings, contentDescription = "Settings", tint = PrimaryBlue) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(
+                                    selectedContainerColor = PrimaryContainer,
+                                    selectedTextColor = PrimaryBlue,
+                                    selectedIconColor = PrimaryBlue,
+                                    unselectedTextColor = OnSurfaceVariantText,
+                                    unselectedIconColor = OnSurfaceVariantText
+                                )
+                            )
+
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = OutlineColor.copy(alpha = 0.3f))
+
+                            Text(
+                                text = "App & Community",
+                                style = AppTypography.bodySmall.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp),
+                                color = OnSurfaceVariantText,
+                                modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 8.dp)
+                            )
+
+                            NavigationDrawerItem(
+                                label = { Text("Share App", fontWeight = FontWeight.Bold) },
+                                selected = false,
+                                onClick = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    val shareText = """
+                                        📈 *Streamline your deals with DealTrack CRM!*
+                                        
+                                        Keep your business running flawlessly with the ultimate offline-first CRM companion.
+                                        • 👥 Manage clients in a secure offline vault
+                                        • 🤝 Trace negotiations and log interaction history
+                                        • 🔔 Set smart alarm reminders for follow-ups
+                                        
+                                        Download DealTrack CRM today and close more sales!
+                                        🔗 Download App: https://play.google.com/store/apps/details?id=com.frqtools.dealtrackcrm
+                                    """.trimIndent()
+                                    
+                                    val sendIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                        type = "text/plain"
+                                    }
+                                    val shareIntent = Intent.createChooser(sendIntent, "Share DealTrack CRM via")
+                                    context.startActivity(shareIntent)
+                                },
+                                icon = { Icon(Icons.Default.Share, contentDescription = "Share", tint = PrimaryBlue) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
+                            )
+
+                            NavigationDrawerItem(
+                                label = { Text("Rate Us", fontWeight = FontWeight.Bold) },
+                                selected = false,
+                                onClick = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    try {
+                                        val rateIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.frqtools.dealtrackcrm")).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET)
+                                        }
+                                        context.startActivity(rateIntent)
+                                    } catch (e: Exception) {
+                                        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.frqtools.dealtrackcrm"))
+                                        context.startActivity(webIntent)
+                                    }
+                                },
+                                icon = { Icon(Icons.Default.Star, contentDescription = "Rate Us", tint = PrimaryBlue) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
+                            )
+
+                            NavigationDrawerItem(
+                                label = { Text("Check for Updates", fontWeight = FontWeight.Bold) },
+                                selected = false,
+                                onClick = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    val updateIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.frqtools.dealtrackcrm"))
+                                    context.startActivity(updateIntent)
+                                },
+                                icon = { Icon(Icons.Default.SystemUpdate, contentDescription = "Check for Update", tint = PrimaryBlue) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
+                            )
+
+                            NavigationDrawerItem(
+                                label = { Text("More Useful Apps", fontWeight = FontWeight.Bold) },
+                                selected = false,
+                                onClick = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    val moreIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/dev?id=5671242375404230146"))
+                                    context.startActivity(moreIntent)
+                                },
+                                icon = { Icon(Icons.Default.Apps, contentDescription = "More Apps", tint = PrimaryBlue) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
+                            )
+
+                            NavigationDrawerItem(
+                                label = { Text("WhatsApp Support", fontWeight = FontWeight.Bold) },
+                                selected = false,
+                                onClick = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    try {
+                                        val supportText = "Hello DealTrack CRM Support team, I need assistance with the app."
+                                        val waUrl = "https://wa.me/923252604441?text=${Uri.encode(supportText)}"
+                                        val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(waUrl))
+                                        context.startActivity(waIntent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "WhatsApp support number: +923252604441", Toast.LENGTH_LONG).show()
+                                    }
+                                },
+                                icon = { Icon(Icons.Default.Chat, contentDescription = "WhatsApp Support", tint = PrimaryBlue) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(unselectedTextColor = OnSurfaceText)
+                            )
                         }
                     }
                 ) {

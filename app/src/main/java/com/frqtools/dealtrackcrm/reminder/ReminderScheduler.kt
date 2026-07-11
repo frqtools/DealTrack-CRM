@@ -13,6 +13,7 @@ object ReminderScheduler {
     const val EXTRA_CLIENT_NAME = "client_name"
     const val EXTRA_NOTE = "note"
     const val EXTRA_CLIENT_PHONE = "client_phone"
+    const val EXTRA_BUTTON_TYPE = "notification_button_type"
 
     fun schedule(context: Context, followUp: FollowUp, clientName: String, clientPhone: String? = null) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -22,6 +23,7 @@ object ReminderScheduler {
             putExtra(EXTRA_CLIENT_NAME, clientName)
             putExtra(EXTRA_NOTE, followUp.note)
             putExtra(EXTRA_CLIENT_PHONE, clientPhone)
+            putExtra(EXTRA_BUTTON_TYPE, followUp.notificationButtonType)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(

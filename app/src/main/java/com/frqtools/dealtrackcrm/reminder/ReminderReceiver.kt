@@ -15,6 +15,7 @@ import com.frqtools.dealtrackcrm.data.AppRepository
 import com.frqtools.dealtrackcrm.data.FollowUp
 import com.frqtools.dealtrackcrm.data.Interaction
 import com.frqtools.dealtrackcrm.ui.cleanPhoneForDialing
+import com.frqtools.dealtrackcrm.ui.cleanPhoneForWhatsApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -41,7 +42,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 val clientName = intent.getStringExtra(ReminderScheduler.EXTRA_CLIENT_NAME) ?: "Client"
                 val note = intent.getStringExtra(ReminderScheduler.EXTRA_NOTE) ?: "Follow-up reminder"
                 val clientPhone = intent.getStringExtra(ReminderScheduler.EXTRA_CLIENT_PHONE)
-                showNotification(context, followUpId, clientName, note, clientPhone)
+                val buttonType = intent.getStringExtra(ReminderScheduler.EXTRA_BUTTON_TYPE) ?: "Call"
+                showNotification(context, followUpId, clientName, note, clientPhone, buttonType)
             }
             ACTION_DONE -> {
                 val pendingResult = goAsync()
@@ -61,7 +63,7 @@ class ReminderReceiver : BroadcastReceiver() {
                                     clientId = followUp.clientId,
                                     dealId = followUp.dealId,
                                     dateTime = System.currentTimeMillis(),
-                                    contactMethod = "Call",
+                                    contactMethod = followUp.notificationButtonType,
                                     discussion = "Completed follow-up: ${followUp.note}",
                                     clientResponse = "Closed",
                                     myNextStep = ""
@@ -99,7 +101,14 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun showNotification(context: Context, followUpId: Int, clientName: String, note: String, clientPhone: String? = null) {
+    private fun showNotification(
+        context: Context,
+        followUpId: Int,
+        clientName: String,
+        note: String,
+        clientPhone: String? = null,
+        buttonType: String = "Call"
+    ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -155,18 +164,32 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setContentIntent(openPI)
             .addAction(android.R.drawable.checkbox_on_background, "Done", donePI)
-            .addAction(android.R.drawable.ic_lock_idle_alarm, "Snooze", snoozePI)
+            .addAction(android.R.drawable.ic_lock_idle_alarm, "Reschedule", snoozePI)
 
         if (!clientPhone.isNullOrBlank()) {
-            val dialedPhone = cleanPhoneForDialing(clientPhone)
-            val callIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialedPhone"))
-            val callPI = PendingIntent.getActivity(
-                context,
-                followUpId * 10 + 4,
-                callIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            builder.addAction(android.R.drawable.sym_action_call, "Call", callPI)
+            if (buttonType == "WhatsApp") {
+                val waPhone = cleanPhoneForWhatsApp(clientPhone)
+                val msg = "Hello, following up on: $note"
+                val waUrl = "https://wa.me/$waPhone?text=${Uri.encode(msg)}"
+                val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(waUrl))
+                val waPI = PendingIntent.getActivity(
+                    context,
+                    followUpId * 10 + 5,
+                    waIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                builder.addAction(android.R.drawable.sym_action_chat, "WhatsApp", waPI)
+            } else {
+                val dialedPhone = cleanPhoneForDialing(clientPhone)
+                val callIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialedPhone"))
+                val callPI = PendingIntent.getActivity(
+                    context,
+                    followUpId * 10 + 4,
+                    callIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                builder.addAction(android.R.drawable.sym_action_call, "Call", callPI)
+            }
         }
 
         notificationManager.notify(followUpId, builder.build())

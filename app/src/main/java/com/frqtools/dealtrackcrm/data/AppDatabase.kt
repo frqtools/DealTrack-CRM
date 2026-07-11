@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         FollowUp::class,
         AppSettings::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -130,7 +130,7 @@ abstract class AppDatabase : RoomDatabase() {
             val dbFile = context.getDatabasePath("track_deals_database")
             if (dbFile.exists()) {
                 try {
-                    val currentAppVersion = 5 // Keep in sync with version = 5 annotation above
+                    val currentAppVersion = 6 // Keep in sync with version = 6 annotation above
                     val existingDbVersion = android.database.sqlite.SQLiteDatabase.openDatabase(
                         dbFile.absolutePath,
                         null,

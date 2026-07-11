@@ -2185,14 +2185,18 @@ fun AddEditFollowUpScreen(
     val context = LocalContext.current
     val followUps by viewModel.followUps.collectAsStateWithLifecycle()
     val clients by viewModel.clients.collectAsStateWithLifecycle()
+    val deals by viewModel.deals.collectAsStateWithLifecycle()
 
     var selectedClientId by remember { mutableStateOf(clientId ?: 0) }
+    var selectedDealId by remember { mutableStateOf<Int?>(null) }
+    var notificationButtonType by remember { mutableStateOf("Call") }
     var note by remember { mutableStateOf("") }
     var priority by remember { mutableStateOf("Normal") }
     var scheduledDateTime by remember { mutableStateOf(System.currentTimeMillis() + 3600000) } // default 1 hour in future
 
     var isEdit by remember { mutableStateOf(false) }
     var clientDropdownExpanded by remember { mutableStateOf(false) }
+    var dealDropdownExpanded by remember { mutableStateOf(false) }
 
     val priorities = listOf("Normal", "Important", "Urgent")
 
@@ -2202,10 +2206,19 @@ fun AddEditFollowUpScreen(
             if (f != null) {
                 isEdit = true
                 selectedClientId = f.clientId
+                selectedDealId = f.dealId
                 note = f.note
                 priority = f.priority
                 scheduledDateTime = f.scheduledDateTime
+                notificationButtonType = f.notificationButtonType
             }
+        }
+    }
+
+    LaunchedEffect(selectedClientId) {
+        val loadedFollowUp = followUps.find { it.id == followUpId }
+        if (loadedFollowUp == null || loadedFollowUp.clientId != selectedClientId) {
+            selectedDealId = null
         }
     }
 
@@ -2296,11 +2309,13 @@ fun AddEditFollowUpScreen(
                         val f = FollowUp(
                             id = followUpId ?: 0,
                             clientId = selectedClientId,
+                            dealId = selectedDealId,
                             scheduledDateTime = scheduledDateTime,
                             note = note.trim(),
                             priority = priority,
                             isDone = false,
-                            alarmId = followUpId ?: Random().nextInt(1000000)
+                            alarmId = followUpId ?: Random().nextInt(1000000),
+                            notificationButtonType = notificationButtonType
                         )
                         viewModel.saveFollowUp(context, f) {
                             Toast.makeText(context, "Reminder scheduled", Toast.LENGTH_SHORT).show()
@@ -2410,7 +2425,60 @@ fun AddEditFollowUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Date / Time Trigger Picker
+            // Link to Deal (Optional)
+            val clientDeals = remember(selectedClientId, deals) {
+                deals.filter { it.clientId == selectedClientId }
+            }
+            Text("Link to Deal (Optional)", style = AppTypography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(modifier = Modifier.fillMaxWidth()) {
+                val currentDeal = clientDeals.find { it.id == selectedDealId }
+                OutlinedTextField(
+                    value = if (selectedDealId == null) "None (General Reminder)" else currentDeal?.title ?: "Select Deal...",
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = selectedClientId != 0 && clientDeals.isNotEmpty(),
+                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = OutlineColor,
+                        disabledBorderColor = OutlineColor.copy(alpha = 0.5f),
+                        disabledTextColor = OnSurfaceVariantText.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (selectedClientId != 0 && clientDeals.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { dealDropdownExpanded = true }
+                    )
+                }
+                DropdownMenu(
+                    expanded = dealDropdownExpanded,
+                    onDismissRequest = { dealDropdownExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("None (General Reminder)", fontWeight = FontWeight.Medium) },
+                        onClick = {
+                            selectedDealId = null
+                            dealDropdownExpanded = false
+                        }
+                    )
+                    clientDeals.forEach { deal ->
+                        val stageText = if (deal.stage.isNotEmpty()) " - ${deal.stage}" else ""
+                        DropdownMenuItem(
+                            text = { Text("${deal.title}$stageText (${formatCurrency(deal.offeredPrice)})") },
+                            onClick = {
+                                selectedDealId = deal.id
+                                dealDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
             Text("Scheduled Reminder Time", style = AppTypography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedTextField(
@@ -2460,6 +2528,44 @@ fun AddEditFollowUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Notification Action Button Selector
+            Text("Notification Action Button", style = AppTypography.bodySmall, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val optionTypes = listOf("Call", "WhatsApp")
+                optionTypes.forEach { type ->
+                    val isSelected = notificationButtonType == type
+                    val color = if (type == "WhatsApp") WonGreen else PrimaryBlue
+                    val labelColor = if (isSelected) Color.White else OnSurfaceVariantText
+                    
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { notificationButtonType = type },
+                        label = { Text(type, color = labelColor) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = color,
+                            selectedLabelColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        leadingIcon = {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = if (type == "WhatsApp") Icons.AutoMirrored.Filled.Chat else Icons.Default.Call,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedFormTextField(
                 value = note,
                 onValueChange = { note = it },
@@ -2491,11 +2597,13 @@ fun AddEditFollowUpScreen(
                     val f = FollowUp(
                         id = followUpId ?: 0,
                         clientId = selectedClientId,
+                        dealId = selectedDealId,
                         scheduledDateTime = scheduledDateTime,
                         note = note.trim(),
                         priority = priority,
                         isDone = false,
-                        alarmId = followUpId ?: Random().nextInt(1000000)
+                        alarmId = followUpId ?: Random().nextInt(1000000),
+                        notificationButtonType = notificationButtonType
                     )
                     viewModel.saveFollowUp(context, f) {
                         Toast.makeText(context, "Reminder scheduled", Toast.LENGTH_SHORT).show()
