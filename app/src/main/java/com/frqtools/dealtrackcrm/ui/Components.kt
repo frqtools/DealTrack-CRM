@@ -140,7 +140,7 @@ fun OutlinedFormTextField(
     maxLines: Int = 1,
     testTag: String = ""
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -158,7 +158,7 @@ fun OutlinedFormTextField(
                 focusedLabelColor = PrimaryBlue,
                 unfocusedLabelColor = OnSurfaceVariantText
             ),
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .testTag(testTag)
         )

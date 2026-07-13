@@ -57,12 +57,15 @@ import com.frqtools.dealtrackcrm.ui.theme.*
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private val repository by lazy { AppRepository(applicationContext) }
+    private val viewModel: MainViewModel by viewModels { ViewModelFactory(applicationContext, repository) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val repository = AppRepository(applicationContext)
-        val viewModel: MainViewModel by viewModels { ViewModelFactory(applicationContext, repository) }
+        // Process initial push notification launch intent
+        processIntentForNotifications(intent)
 
         setContent {
             MyApplicationTheme {
@@ -100,12 +103,37 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Handle Push Notification Intent Redirections for Warm Launch / App running
+                val pendingRoute by viewModel.pendingNotificationRoute.collectAsStateWithLifecycle()
+                LaunchedEffect(pendingRoute, currentRoute) {
+                    val targetLink = pendingRoute
+                    if (!targetLink.isNullOrEmpty() && currentRoute != Routes.SPLASH) {
+                        val composeRoute = Routes.getComposeRouteFromTargetLink(targetLink)
+                        if (composeRoute != null) {
+                            navController.navigate(composeRoute) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        } else {
+                            handleNotificationRedirect(targetLink, navController, context)
+                        }
+                        viewModel.clearPendingNotificationRoute()
+                    }
+                }
+
                 val isBottomBarVisible = currentRoute in topLevelRoutes
 
-                // Close drawer on back press if open
+                // Professional Back Button Handling
                 if (drawerState.isOpen) {
                     BackHandler {
                         coroutineScope.launch { drawerState.close() }
+                    }
+                } else if (currentRoute in listOf(Routes.CLIENTS, Routes.DEALS, Routes.FOLLOW_UPS, Routes.SETTINGS)) {
+                    BackHandler {
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.HOME) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
                 }
 
@@ -180,7 +208,7 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     coroutineScope.launch { drawerState.close() }
                                     navController.navigate(Routes.SETTINGS) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        popUpTo(Routes.HOME) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -314,7 +342,7 @@ class MainActivity : ComponentActivity() {
                                         selected = currentRoute == Routes.HOME,
                                         onClick = {
                                             navController.navigate(Routes.HOME) {
-                                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                popUpTo(Routes.HOME) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
@@ -339,7 +367,7 @@ class MainActivity : ComponentActivity() {
                                         selected = currentRoute == Routes.CLIENTS,
                                         onClick = {
                                             navController.navigate(Routes.CLIENTS) {
-                                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                popUpTo(Routes.HOME) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
@@ -365,7 +393,7 @@ class MainActivity : ComponentActivity() {
                                         selected = currentRoute == Routes.DEALS,
                                         onClick = {
                                             navController.navigate(Routes.DEALS) {
-                                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                popUpTo(Routes.HOME) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
@@ -390,7 +418,7 @@ class MainActivity : ComponentActivity() {
                                         selected = currentRoute == Routes.FOLLOW_UPS,
                                         onClick = {
                                             navController.navigate(Routes.FOLLOW_UPS) {
-                                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                popUpTo(Routes.HOME) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
@@ -415,7 +443,7 @@ class MainActivity : ComponentActivity() {
                                         selected = currentRoute == Routes.SETTINGS,
                                         onClick = {
                                             navController.navigate(Routes.SETTINGS) {
-                                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                popUpTo(Routes.HOME) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
@@ -562,6 +590,123 @@ class MainActivity : ComponentActivity() {
                                 SearchScreen(navController, viewModel)
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        processIntentForNotifications(intent)
+    }
+
+    private fun processIntentForNotifications(intent: Intent?) {
+        val clickAction = intent?.getStringExtra("click_action")
+        val ctaLink = intent?.getStringExtra("cta_link")
+        val imageClickAction = intent?.getStringExtra("image_click_action")
+        val dataString = intent?.dataString
+        val targetLink = clickAction ?: ctaLink ?: imageClickAction ?: dataString
+        if (!targetLink.isNullOrEmpty()) {
+            viewModel.setPendingNotificationRoute(targetLink)
+            // Clear extras to avoid duplicate triggering
+            intent?.removeExtra("click_action")
+            intent?.removeExtra("cta_link")
+            intent?.removeExtra("image_click_action")
+            try {
+                intent?.data = null
+            } catch (e: Exception) {
+                // Ignore any potential read-only or type safety issues on intent data modification
+            }
+        }
+    }
+
+    private fun handleNotificationRedirect(
+        targetLink: String,
+        navController: androidx.navigation.NavController,
+        context: android.content.Context
+    ) {
+        val cleanLink = targetLink.trim().replace("dealtrack://", "")
+        val isExternal = cleanLink.startsWith("http://") || 
+                cleanLink.startsWith("https://") || 
+                cleanLink.startsWith("whatsapp://") || 
+                cleanLink.startsWith("tel:") || 
+                cleanLink.startsWith("mailto:") ||
+                (!targetLink.trim().startsWith("dealtrack://") && !targetLink.trim().contains("/"))
+
+        if (isExternal) {
+            try {
+                val uriToParse = if (!targetLink.contains("://") && !targetLink.startsWith("tel:") && !targetLink.startsWith("mailto:")) {
+                    "https://$targetLink"
+                } else {
+                    targetLink
+                }
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(uriToParse.trim())).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(browserIntent)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Cannot open link: $targetLink", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            // App Internal Route Redirection
+            when {
+                cleanLink.startsWith("clients") || cleanLink.startsWith("client_list") -> {
+                    navController.navigate(Routes.CLIENTS) {
+                        popUpTo(Routes.HOME) { saveState = true }
+                        launchSingleTop = true
+                    }
+                }
+                cleanLink.startsWith("client/") -> {
+                    val idStr = cleanLink.substringAfter("client/").trim()
+                    val id = idStr.toIntOrNull() ?: 0
+                    if (id > 0) {
+                        navController.navigate(Routes.CLIENT_PROFILE.replace("{clientId}", id.toString())) {
+                            popUpTo(Routes.HOME) { saveState = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.navigate(Routes.CLIENTS)
+                    }
+                }
+                cleanLink.startsWith("deals") || cleanLink.startsWith("deal_list") -> {
+                    navController.navigate(Routes.DEALS) {
+                        popUpTo(Routes.HOME) { saveState = true }
+                        launchSingleTop = true
+                    }
+                }
+                cleanLink.startsWith("deal/") -> {
+                    val idStr = cleanLink.substringAfter("deal/").trim()
+                    val id = idStr.toIntOrNull() ?: 0
+                    if (id > 0) {
+                        navController.navigate(Routes.ADD_EDIT_DEAL.replace("{dealId}", id.toString()).replace("{clientId}", "0")) {
+                            popUpTo(Routes.HOME) { saveState = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.navigate(Routes.DEALS)
+                    }
+                }
+                cleanLink.startsWith("followups") || cleanLink.startsWith("follow_ups") -> {
+                    navController.navigate(Routes.FOLLOW_UPS) {
+                        popUpTo(Routes.HOME) { saveState = true }
+                        launchSingleTop = true
+                    }
+                }
+                cleanLink.startsWith("settings") -> {
+                    navController.navigate(Routes.SETTINGS) {
+                        popUpTo(Routes.HOME) { saveState = true }
+                        launchSingleTop = true
+                    }
+                }
+                cleanLink.startsWith("search") -> {
+                    navController.navigate(Routes.SEARCH)
+                }
+                else -> {
+                    // Fallback to Home
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.HOME) { inclusive = true }
                     }
                 }
             }

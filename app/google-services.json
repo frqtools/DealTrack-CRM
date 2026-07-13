@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "71692807659",
+    "project_id": "dealtrackcrm-1",
+    "storage_bucket": "dealtrackcrm-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:71692807659:android:fcd47eef67a9c65fda3dae",
+        "android_client_info": {
+          "package_name": "com.frqtools.dealtrackcrm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByTCcEtmGFXZ2gjKFHLEK6xhEECqixnPU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1606,7 +1606,7 @@ fun AddEditInteractionScreen(
                 placeholder = "e.g., Client requested wholesale fabric catalogs and negotiated bulk shipping options...",
                 singleLine = false,
                 maxLines = 5,
-                modifier = Modifier.height(140.dp)
+                modifier = Modifier.heightIn(min = 90.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))

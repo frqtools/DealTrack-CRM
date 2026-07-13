@@ -67,8 +67,23 @@ fun SplashScreen(
         val isOnboarded = prefs.getBoolean("is_onboarded", false)
         
         if (isOnboarded) {
-            navController.navigate(Routes.HOME) {
-                popUpTo(Routes.SPLASH) { inclusive = true }
+            val pendingRoute = viewModel.pendingNotificationRoute.value
+            if (pendingRoute != null) {
+                val composeRoute = Routes.getComposeRouteFromTargetLink(pendingRoute)
+                if (composeRoute != null) {
+                    navController.navigate(composeRoute) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+                viewModel.clearPendingNotificationRoute()
+            } else {
+                navController.navigate(Routes.HOME) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                }
             }
         } else {
             navController.navigate(Routes.ONBOARDING) {

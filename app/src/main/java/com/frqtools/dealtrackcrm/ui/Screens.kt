@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -67,6 +68,49 @@ object Routes {
     const val ADD_EDIT_FOLLOW_UP = "add_edit_follow_up?followUpId={followUpId}&clientId={clientId}"
     const val SETTINGS = "settings"
     const val SEARCH = "search"
+
+    fun getComposeRouteFromTargetLink(targetLink: String): String? {
+        val cleanLink = targetLink.trim().replace("dealtrack://", "")
+        if (cleanLink.startsWith("http://") || cleanLink.startsWith("https://")) {
+            return null
+        }
+        return when {
+            cleanLink.startsWith("clients") || cleanLink.startsWith("client_list") -> {
+                CLIENTS
+            }
+            cleanLink.startsWith("client/") -> {
+                val idStr = cleanLink.substringAfter("client/").trim()
+                val id = idStr.toIntOrNull() ?: 0
+                if (id > 0) {
+                    CLIENT_PROFILE.replace("{clientId}", id.toString())
+                } else {
+                    CLIENTS
+                }
+            }
+            cleanLink.startsWith("deals") || cleanLink.startsWith("deal_list") -> {
+                DEALS
+            }
+            cleanLink.startsWith("deal/") -> {
+                val idStr = cleanLink.substringAfter("deal/").trim()
+                val id = idStr.toIntOrNull() ?: 0
+                if (id > 0) {
+                    ADD_EDIT_DEAL.replace("{dealId}", id.toString()).replace("{clientId}", "0")
+                } else {
+                    DEALS
+                }
+            }
+            cleanLink.startsWith("followups") || cleanLink.startsWith("follow_ups") -> {
+                FOLLOW_UPS
+            }
+            cleanLink.startsWith("settings") -> {
+                SETTINGS
+            }
+            cleanLink.startsWith("search") -> {
+                SEARCH
+            }
+            else -> null
+        }
+    }
 }
 
 // -------------------------------------------------------------
@@ -143,9 +187,9 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .padding(start = 12.dp)
-                            .size(32.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(PrimaryBlue.copy(alpha = 0.1f))
+                            .background(PrimaryBlue.copy(alpha = 0.08f))
                             .clickable { onMenuClick() },
                         contentAlignment = Alignment.Center
                     ) {
@@ -153,7 +197,7 @@ fun HomeScreen(
                             imageVector = Icons.Default.Menu,
                             contentDescription = "Menu",
                             tint = PrimaryBlue,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 },
@@ -161,7 +205,7 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .padding(end = 12.dp)
-                            .size(32.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(PrimaryBlue),
                         contentAlignment = Alignment.Center
@@ -171,7 +215,7 @@ fun HomeScreen(
                             text = initials,
                             color = OnPrimaryBlue,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
                 },
@@ -200,7 +244,7 @@ fun HomeScreen(
                 DropdownMenu(
                     expanded = showQuickMenu,
                     onDismissRequest = { showQuickMenu = false },
-                    modifier = Modifier.width(180.dp)
+                    modifier = Modifier.width(190.dp)
                 ) {
                     DropdownMenuItem(
                         text = { Text("Add Client", fontWeight = FontWeight.Bold) },
@@ -245,37 +289,116 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 16.dp)
         ) {
-            // Header greeting
+            // Premium Gradient Greetings Banner Card
             val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
             val greeting = when {
                 hour < 12 -> "Good morning"
                 hour < 17 -> "Good afternoon"
                 else -> "Good evening"
             }
+            val greetingEmoji = when {
+                hour < 12 -> "🌅"
+                hour < 17 -> "☀️"
+                else -> "🌌"
+            }
 
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "$greeting, ${settings.ownerName}!",
-                    style = AppTypography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = OnSurfaceText
-                )
-                Text(
-                    text = settings.businessName,
-                    style = AppTypography.bodyMedium,
-                    color = OnSurfaceVariantText
-                )
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(PrimaryBlue, PrimaryBlue.copy(alpha = 0.85f), PrimaryLight)
+                            )
+                        )
+                        .padding(24.dp)
+                ) {
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "$greeting $greetingEmoji",
+                                    style = AppTypography.headlineSmall.copy(
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = (-0.5).sp
+                                    ),
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = settings.ownerName,
+                                    style = AppTypography.headlineMedium.copy(
+                                        fontSize = 26.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = (-0.5).sp
+                                    ),
+                                    color = Color.White
+                                )
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.15f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "PRO PARTNER",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = 0.12f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Business,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = settings.businessName,
+                                style = AppTypography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White.copy(alpha = 0.95f)
+                            )
+                        }
+                    }
+                }
             }
 
             // Big Search Bar Quick Link
             Card(
                 colors = CardDefaults.cardColors(containerColor = SurfaceBg),
-                border = BorderStroke(1.dp, OutlineColor),
-                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, OutlineColor.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
                     .clickable { navController.navigate(Routes.SEARCH) }
             ) {
                 Row(
@@ -294,7 +417,14 @@ fun HomeScreen(
                     Text(
                         text = "Search clients, deals, or logs...",
                         style = AppTypography.bodyMedium,
-                        color = OnSurfaceVariantText
+                        color = OnSurfaceVariantText.copy(alpha = 0.8f)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = OnSurfaceVariantText.copy(alpha = 0.4f),
+                        modifier = Modifier.size(12.dp)
                     )
                 }
             }
@@ -354,6 +484,8 @@ fun HomeScreen(
                         value = "${followUpsToday.size}",
                         label = "Reminders Today",
                         icon = Icons.Outlined.Notifications,
+                        iconColor = WarningAmber,
+                        iconBgColor = WarningContainer,
                         modifier = Modifier.weight(1f)
                     ) { navController.navigate(Routes.FOLLOW_UPS) }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -361,6 +493,8 @@ fun HomeScreen(
                         value = "${openDeals.size}",
                         label = "Open Deals",
                         icon = Icons.Outlined.Handshake,
+                        iconColor = PrimaryBlue,
+                        iconBgColor = PrimaryContainer,
                         modifier = Modifier.weight(1f)
                     ) { navController.navigate(Routes.DEALS) }
                 }
@@ -370,6 +504,8 @@ fun HomeScreen(
                         value = formatCurrency(wonValueThisMonth, settings.currency),
                         label = "Won this Month",
                         icon = Icons.Outlined.Star,
+                        iconColor = WonGreen,
+                        iconBgColor = WonGreenContainer,
                         modifier = Modifier.weight(1f)
                     ) { navController.navigate(Routes.DEALS) }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -377,6 +513,8 @@ fun HomeScreen(
                         value = "${newClientsThisWeek.size}",
                         label = "New Clients (Week)",
                         icon = Icons.Outlined.People,
+                        iconColor = ProposalPurple,
+                        iconBgColor = ProposalPurpleContainer,
                         modifier = Modifier.weight(1f)
                     ) { navController.navigate(Routes.CLIENTS) }
                 }
@@ -385,17 +523,16 @@ fun HomeScreen(
             // Quick Actions Title
             Text(
                 text = "Quick Actions",
-                style = AppTypography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = AppTypography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = OnSurfaceText,
-                modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 12.dp)
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ActionCard(
                     label = "Client",
@@ -438,10 +575,9 @@ fun HomeScreen(
             // Recent Activity Title
             Text(
                 text = "Recent Activity Feed",
-                style = AppTypography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = AppTypography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = OnSurfaceText,
-                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 12.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 14.dp)
             )
 
             if (recentActivities.isEmpty()) {
@@ -457,23 +593,16 @@ fun HomeScreen(
             } else {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SurfaceBg),
-                    border = BorderStroke(1.dp, ScreenBg),
-                    elevation = CardDefaults.cardElevation(1.dp),
+                    border = BorderStroke(1.dp, OutlineColor.copy(alpha = 0.35f)),
+                    elevation = CardDefaults.cardElevation(2.dp),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    Column {
+                    Column(modifier = Modifier.padding(vertical = 12.dp)) {
                         recentActivities.forEachIndexed { index, act ->
-                            RecentActivityRow(act)
-                            if (index < recentActivities.lastIndex) {
-                                HorizontalDivider(
-                                    thickness = 1.dp,
-                                    color = OutlineColor,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
-                                )
-                            }
+                            RecentActivityRow(act, isLast = index == recentActivities.lastIndex)
                         }
                     }
                 }
@@ -494,46 +623,71 @@ fun StatCard(
     value: String,
     label: String,
     icon: ImageVector,
+    iconColor: Color,
+    iconBgColor: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceBg),
-        border = BorderStroke(1.dp, ScreenBg),
-        elevation = CardDefaults.cardElevation(1.dp),
-        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, OutlineColor.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(iconBgColor)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
                 Icon(
-                    imageVector = icon,
+                    imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(24.dp)
+                    tint = iconColor.copy(alpha = 0.4f),
+                    modifier = Modifier.size(16.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = value,
-                style = AppTypography.headlineLarge.copy(fontSize = 28.sp),
-                fontWeight = FontWeight.ExtraBold,
-                color = PrimaryBlue,
+                style = AppTypography.headlineMedium.copy(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.5).sp
+                ),
+                color = OnSurfaceText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label.uppercase(Locale.getDefault()),
-                style = AppTypography.bodySmall,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp,
+                style = AppTypography.bodySmall.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                ),
                 color = OnSurfaceVariantText
             )
         }
@@ -551,21 +705,24 @@ fun ActionCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceBg),
-        border = BorderStroke(1.dp, OutlineColor),
+        border = BorderStroke(1.dp, OutlineColor.copy(alpha = 0.35f)),
         shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(1.dp),
         modifier = modifier
-            .height(80.dp)
+            .height(86.dp)
             .clickable { onClick() }
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 12.dp, horizontal = 4.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(iconBgColor)
             ) {
@@ -579,18 +736,20 @@ fun ActionCard(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = label,
-                style = AppTypography.labelSmall,
-                fontWeight = FontWeight.Bold,
+                style = AppTypography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.25.sp
+                ),
                 color = OnSurfaceText,
-                textAlign = TextAlign.Center,
-                fontSize = 11.sp
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 @Composable
-fun RecentActivityRow(act: ActivityItem) {
+fun RecentActivityRow(act: ActivityItem, isLast: Boolean) {
     val (icon, color) = when (act.type) {
         "client_added" -> Pair(Icons.Default.Person, PrimaryBlue)
         "deal_won" -> Pair(Icons.Default.Celebration, WonGreen)
@@ -602,39 +761,71 @@ fun RecentActivityRow(act: ActivityItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
+        // Connected Timeline track and node indicator
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(40.dp)
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.12f))
+                    .border(1.dp, color.copy(alpha = 0.25f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            }
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(38.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(color.copy(alpha = 0.4f), OutlineColor.copy(alpha = 0.3f))
+                            )
+                        )
+                )
+            }
         }
+        
         Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = act.title,
-                style = AppTypography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = OnSurfaceText
-            )
+        
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = act.title,
+                    style = AppTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = OnSurfaceText
+                )
+                Text(
+                    text = formatTimeAgo(act.timestamp),
+                    style = AppTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium),
+                    color = OnSurfaceVariantText.copy(alpha = 0.8f)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = act.desc,
-                style = AppTypography.bodySmall,
+                style = AppTypography.bodySmall.copy(lineHeight = 16.sp),
                 color = OnSurfaceVariantText,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Text(
-            text = formatTimeAgo(act.timestamp),
-            style = AppTypography.bodySmall,
-            color = OnSurfaceVariantText
-        )
     }
 }
 

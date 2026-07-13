@@ -28,7 +28,40 @@ class MainViewModel(private val context: Context, private val repository: AppRep
     val settings: StateFlow<AppSettings> = repository.appSettings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppSettings())
 
+    // --- Pending Notification Redirect ---
+    private val _pendingNotificationRoute = MutableStateFlow<String?>(null)
+    val pendingNotificationRoute: StateFlow<String?> = _pendingNotificationRoute.asStateFlow()
+
+    private val _fcmToken = MutableStateFlow<String>("Loading FCM Token...")
+    val fcmToken: StateFlow<String> = _fcmToken.asStateFlow()
+
+    fun setPendingNotificationRoute(route: String?) {
+        _pendingNotificationRoute.value = route
+    }
+
+    fun clearPendingNotificationRoute() {
+        _pendingNotificationRoute.value = null
+    }
+
+    fun refreshFcmToken() {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _fcmToken.value = task.result ?: "Token is empty"
+                    Log.d("DealTrackFCM", "Retrieved FCM Token: ${task.result}")
+                } else {
+                    _fcmToken.value = "Failed to fetch FCM Token: ${task.exception?.localizedMessage}"
+                    Log.e("DealTrackFCM", "FCM Token retrieval failed", task.exception)
+                }
+            }
+        } catch (e: Exception) {
+            _fcmToken.value = "Firebase not initialized: ${e.localizedMessage}"
+            Log.e("DealTrackFCM", "Firebase messaging initialization exception", e)
+        }
+    }
+
     init {
+        refreshFcmToken()
         viewModelScope.launch {
             val currentSettings = repository.getSettingsDirect()
             val sharedPrefs = context.getSharedPreferences("crm_app_preferences", Context.MODE_PRIVATE)
